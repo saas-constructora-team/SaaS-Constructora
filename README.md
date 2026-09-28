@@ -120,12 +120,12 @@ saas-constructora/
 
 ## Criterios de éxito del skeleton (HU-02)
 
-1. ✅ `docker compose up -d` levanta PostgreSQL
-2. ✅ Backend arranca y Flyway crea tabla `projects`
-3. ✅ Frontend muestra formulario (nombre, cliente, ubicación) y lista
-4. ✅ Enviar formulario guarda proyecto en PostgreSQL con estado `ACTIVE` y aparece en lista
-5. ✅ Sin nombre → backend responde `400` y frontend resalta el campo
-6. ✅ Distinto `X-Tenant-Id` → lista vacía (aislamiento multi-tenant)
+1. `docker compose up -d` levanta PostgreSQL
+2.  Backend arranca y Flyway crea tabla `projects`
+3.  Frontend muestra formulario (nombre, cliente, ubicación) y lista
+4.  Enviar formulario guarda proyecto en PostgreSQL con estado `ACTIVE` y aparece en lista
+5.  Sin nombre → backend responde `400` y frontend resalta el campo
+6.  Distinto `X-Tenant-Id` → lista vacía (aislamiento multi-tenant)
 
 ## Próximos pasos (fuera del skeleton)
 
