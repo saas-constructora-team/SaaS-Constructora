@@ -1,0 +1,63 @@
+name: Historia de usuario
+description: Una funcionalidad del backlog (HU-XX) con sus criterios de aceptación
+title: "[HU-XX] "
+labels: ["tipo:historia"]
+body:
+  - type: input
+    id: hu-id
+    attributes:
+      label: Código de la historia
+      description: Identificador del backlog (ej. HU-02)
+      placeholder: HU-02
+    validations:
+      required: true
+  - type: textarea
+    id: historia
+    attributes:
+      label: Historia
+      description: Formato "Como [rol], quiero [acción] para [beneficio]"
+      placeholder: Como arquitecto principal, quiero registrar un nuevo proyecto con sus datos generales y ubicación para centralizar su gestión desde la fase inicial.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Formato "Dado que..., cuando..., entonces..."
+      value: |
+        - [ ] Dado que ..., cuando ..., entonces ...
+        - [ ] Dado que ..., cuando ..., entonces ...
+    validations:
+      required: true
+  - type: dropdown
+    id: moscow
+    attributes:
+      label: Prioridad MoSCoW
+      options:
+        - Must
+        - Should
+        - Could
+        - Won't (por ahora)
+    validations:
+      required: true
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo principal
+      options:
+        - identity
+        - projects
+        - logbook
+        - documents
+        - audit
+        - frontend
+        - infraestructura
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas técnicas o dependencias
+      description: Otras historias que deben estar listas antes, decisiones pendientes, etc.
+    validations:
+      required: false

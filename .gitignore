@@ -1,24 +1,37 @@
-# Compiled class file
+# --- Java / Maven ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
 *.class
-
-# Log file
 *.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-replay_pid*
+
+# --- Node / Angular ---
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# --- IDEs ---
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+.sts4/
+
+# --- Variables de entorno y secretos ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Archivos subidos en desarrollo local (módulo documents) ---
+uploads/
+storage/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db

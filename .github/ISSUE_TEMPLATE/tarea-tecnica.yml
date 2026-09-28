@@ -1,0 +1,36 @@
+name: Tarea técnica
+description: Trabajo que no es una historia de usuario (configuración, refactor, infraestructura, documentación)
+title: "[Tarea] "
+labels: ["tipo:tarea"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: ¿Qué hay que hacer y por qué?
+    validations:
+      required: true
+  - type: textarea
+    id: hecho
+    attributes:
+      label: Definición de terminado
+      value: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo o área
+      options:
+        - identity
+        - projects
+        - logbook
+        - documents
+        - audit
+        - frontend
+        - infraestructura
+        - documentación
+    validations:
+      required: true

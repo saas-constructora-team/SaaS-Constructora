@@ -1,0 +1,49 @@
+name: Reporte de error
+description: Algo no funciona como debería
+title: "[Bug] "
+labels: ["tipo:bug"]
+body:
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: ¿Qué ocurre?
+      description: Describe el comportamiento incorrecto.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      value: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidencia
+      description: Capturas, logs o respuesta de la API.
+    validations:
+      required: false
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo afectado
+      options:
+        - identity
+        - projects
+        - logbook
+        - documents
+        - audit
+        - frontend
+        - infraestructura
+    validations:
+      required: true
