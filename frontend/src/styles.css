@@ -1,1 +1,208 @@
 /* You can add global styles to this file, and also import other style files */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f4f6f9;
+  color: #1f2933;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Autenticación (login / recuperar contraseña) --- */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.auth-brand {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0066cc;
+}
+
+.auth-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  color: #1f2933;
+}
+
+.auth-subtitle {
+  margin: 0 0 1.5rem;
+  font-size: 0.925rem;
+  color: #52606d;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.auth-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.auth-input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+}
+
+.auth-field-error {
+  font-size: 0.8rem;
+  color: #b00020;
+}
+
+.auth-alert {
+  padding: 0.7rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.auth-alert-error {
+  background: #fdecea;
+  border: 1px solid #f5c6c0;
+  color: #8a1c12;
+}
+
+.auth-alert-success {
+  background: #e8f5ec;
+  border: 1px solid #b9e0c6;
+  color: #1c6b34;
+}
+
+.auth-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: #0066cc;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-btn:hover:not(:disabled) {
+  background: #0055a3;
+}
+
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-row-end {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.auth-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #0066cc;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-back {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  color: #7b8794;
+  font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e3e8ef;
+}
+
+.auth-google-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+}
+
+.auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  background: #fff;
+  color: #3c4043;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: not-allowed;
+}
+
+.auth-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: #7b8794;
+  text-align: center;
+}
+
+.auth-session {
+  text-align: center;
+}
+
+.auth-session-name {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.auth-meta {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: #52606d;
+}

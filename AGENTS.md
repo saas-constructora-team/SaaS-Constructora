@@ -1,133 +1,145 @@
-# AGENTS.md
+# AGENTS.md — Reglas de Contexto e Instrucciones para Agentes de IA y Desarrolladores
 
-Contexto permanente del proyecto para agentes de código. Léelo completo antes de escribir código, y mantenlo actualizado cuando cambie el estado del proyecto.
+> **Proyecto:** SaaS de Gestión y Trazabilidad de Proyectos Arquitectónicos  
+> **Modelo de Arquitectura:** Monolito Modular (Backend) + Feature-Driven Architecture (Frontend)  
+> **Estructura de Repositorios:** Dos repositorios independientes (`saas-backend` y `saas-frontend`)
 
-## 1. Qué es este proyecto
+---
 
-SaaS multi-tenant de gestión de proyectos para **constructoras y equipos de arquitectura**, algo parecido a Jira pero adaptado a obra. Proyecto académico de la asignatura *Software como Servicio* (Universidad del Valle, Sede Tuluá).
+## 1. Propósito y Contexto del Proyecto
 
-**Problema que resuelve:** hoy la información de cada proyecto (planos, etapas, renders, avances, novedades) está dispersa en Excel, papel, WhatsApp y computadores locales. No hay trazabilidad ni forma de comparar etapas o proyectos.
+Este proyecto es una plataforma SaaS B2B multitenant orientada a la industria de la construcción y arquitectura. Su objetivo principal es resolver la dispersión de información (hojas de cálculo desconectadas, bitácoras en papel y chats informales), centralizando la gestión de obras, el seguimiento de etapas, la bitácora de campo con fotos, el versionado de planos técnicos y la trazabilidad/auditoría.
 
-**Solución:** una plataforma donde el equipo centraliza proyectos, etapas, tareas, documentos con versiones y una bitácora digital de obra, con trazabilidad de quién hizo qué.
+**Cualquier código generado por desarrolladores o asistentes de IA debe cumplir estrictamente con los límites arquitectónicos y las reglas definidas en este documento.**
 
-**Usuarios:** Director de Proyectos, Arquitectos (el principal crea proyectos), Ingenieros y Contratistas, Trabajadores de obra y Administradores. **Cliente que compra:** la constructora (el *tenant*).
+---
 
-**Flujo crítico:** el arquitecto registra el proyecto → define etapas y asigna roles → carga documentación → el personal en campo llena la bitácora → el director monitorea el avance.
+## 2. Repositorio Backend (`saas-backend`)
 
-## 2. Stack
+### 2.1. Patrón Arquitectónico: Monolito Modular
+* El backend se despliega como una única unidad ejecutable, pero el código está estrictamente dividido en **módulos de dominio independientes**.
+* Queda **estrictamente prohibido** el acoplamiento cruzado directo entre bases de datos de distintos módulos.
 
-- **Backend:** Java 25, Spring Boot 4.1.1, Maven, Spring Data JPA (Hibernate 7), PostgreSQL 16, Flyway, Spring Security con JWT (Nimbus), Lombok, Spring Modulith.
-- **Frontend:** Angular 18+ con standalone components, TypeScript.
-- **Proyecto:** group `com.SaaS`, artifact `Constructora`, paquete base `com.SaaS.Constructora`, empaquetado Jar, configuración en `application.properties`.
-- **Infraestructura local:** Docker Compose (solo PostgreSQL).
-
-**Ojo con Spring Boot 4** (cambió respecto a Boot 3):
-- Se usa `spring-boot-starter-webmvc`, no `spring-boot-starter-web`.
-- Flyway requiere `spring-boot-starter-flyway`.
-- Los starters de prueba son por tecnología (`spring-boot-starter-webmvc-test`, etc.).
-- Si algo de tu memoria sobre Boot 3 choca con esto, manda lo de este documento y el `pom.xml`.
-
-## 3. Arquitectura: monolito modular
-
-Una sola aplicación Spring Boot. Cada módulo es un paquete directo bajo `com.SaaS.Constructora`.
-
-| Módulo | Contiene | Historias |
-|---|---|---|
-| `identity` | Tenant (organización), usuarios, roles, membresía usuario↔proyecto, login, recuperación de contraseña | HU-01, HU-13, parte de HU-03 |
-| `projects` | Proyectos, etapas, tareas, hitos, presupuesto, prioridad, requisitos del cliente, cálculo de avance | HU-02, 03, 06, 09, 10, 11, 14, 15 |
-| `logbook` | Bitácora de obra, novedades y notificaciones | HU-05, HU-12 |
-| `documents` | Planos, renders, versionado, almacenamiento externo | HU-04 |
-| `audit` | Historial de quién cambió qué | HU-07 |
-
-El dashboard (HU-08) no es un módulo: son consultas de lectura sobre `projects` y `logbook`.
-
-**Dependencias permitidas:**
-
-```
-identity  ←  projects  ←  logbook
-                       ←  documents
-
-audit escucha eventos (ApplicationEventPublisher); ningún módulo depende de audit
+### 2.2. Estructura de Directorios del Backend
+```text
+saas-backend/
+├── src/
+│   ├── modules/                  # Módulos del Monolito Modular
+│   │   ├── identity/             # Autenticación, Usuarios, Tenants y Roles (HU-01)
+│   │   ├── projects/             # Proyectos, Etapas, Tareas y Tablero Kanban (HU-02, HU-03, HU-09)
+│   │   ├── site-log/             # Bitácora de Campo y Novedades (HU-05)
+│   │   ├── documents/            # Versionado de Planos y Visor 3D/Renders (HU-04, HU-10)
+│   │   └── audit/                # Trazabilidad y Logs de Auditoría (HU-07)
+│   │
+│   ├── shared/                   # Elementos transversales reutilizables
+│   │   ├── database/             # Conexión central, ORM y migraciones
+│   │   ├── guards/               # Guards/Middlewares de JWT y TenantIsolation
+│   │   ├── interceptors/         # Transformación de respuestas HTTP
+│   │   └── errors/               # Excepciones e interfaces de error universales
+│   │
+│   └── main.ts                   # Punto de entrada de la aplicación API
 ```
 
-### Las tres reglas de modularidad (obligatorias)
-
-1. **Un paquete por módulo, con todo su contenido adentro.** Controladores, servicios, repositorios, entidades y DTOs viven bajo `com.SaaS.Constructora.<modulo>`. Prohibidos los paquetes globales tipo `controllers/` o `entities/`.
-2. **Otros módulos solo llaman al servicio público del módulo, nunca a su repositorio ni a sus entidades.** Los repositorios se declaran sin `public` (visibilidad de paquete) para que el compilador lo haga cumplir.
-3. **Las referencias entre módulos son por ID, no por `@ManyToOne`.** Ejemplo: `LogbookEntry` guarda `projectId` y `userId` como `UUID`. Las relaciones JPA solo se permiten dentro de un mismo módulo (`Stage` → `Project`).
-
-Además: no se permiten dependencias circulares. Si dos módulos se necesitan mutuamente, probablemente deban ser uno solo. Debe existir un test con Spring Modulith que ejecute `ApplicationModules.of(ConstructoraApplication.class).verify()` para detectar violaciones; si no existe, créalo.
-
-## 4. Convenciones de código
-
-- **Multi-tenant por columna:** una sola base de datos, `tenant_id` (`UUID`) en toda tabla de negocio.
-- **Todo query de datos de negocio filtra por `tenantId`.** Nunca usar `findAll()` en un servicio.
-- **IDs `UUID`** generados por la aplicación.
-- **Flyway gestiona el esquema**, con `spring.jpa.hibernate.ddl-auto=validate`. Nunca `update` ni `create`. Cada cambio de esquema es una migración nueva `V<n>__descripcion.sql`; no se editan migraciones ya aplicadas.
-- **Entidades JPA:** constructor sin argumentos `protected` y `@PrePersist` para `createdAt`. **Nunca `@Data` ni `@EqualsAndHashCode` en entidades.** Se permite `@Getter`.
-- **DTOs como `record`.** Validación con Bean Validation (`@NotBlank`, `@Size`, ...) en los DTOs de entrada.
-- **Errores:** respuestas HTTP correctas (`400` validación, `403` sin permiso, `404` no encontrado). Nunca revelar detalles de seguridad en errores de login.
-- **Comentarios y mensajes de usuario en español.** Nombres de clases, métodos y variables en inglés.
-- **Frontend:** un feature por carpeta bajo `src/app/`, standalone components, `HttpClient` con interceptor para el tenant/token.
-
-## 5. Comandos
-
-```bash
-# Base de datos
-docker compose up -d
-
-# Backend (desde /backend)
-./mvnw spring-boot:run
-./mvnw test
-
-# Frontend (desde /frontend)
-npm install
-ng serve --proxy-config proxy.conf.json    # http://localhost:4200
+### 2.3. Estructura Interna de un Módulo (Clean Architecture)
+Cada módulo en `src/modules/{module-name}/` debe mantener la siguiente separación interna:
+```text
+src/modules/site-log/
+├── interface/                    # Controladores HTTP y DTOs (Validación Estructural)
+│   ├── site-log.controller.ts
+│   └── dto/
+│       ├── create-site-log.dto.ts
+│       └── site-log-response.dto.ts
+├── application/                  # Casos de Uso y Servicios de Aplicación (Validación Contextual)
+│   ├── create-site-log.use-case.ts
+│   └── ports/                    # Interfaces de repositorios y servicios externos
+├── domain/                       # Entidades y Reglas de Negocio (Validación de Dominio)
+│   ├── site-log.entity.ts
+│   └── value-objects/
+└── infrastructure/               # Implementación de Repositorios y Persistencia
+    ├── site-log.repository.ts
+    └── site-log.orm-entity.ts
 ```
 
-Backend en `http://localhost:8080`. Base de datos: `saas_constructora`, usuario `saas`, contraseña `saas` (solo desarrollo local).
+### 2.4. Reglas Innegociables del Backend
+1. **Propiedad de Datos (Data Ownership):** Un módulo **NUNCA** ejecuta `SQL JOIN` ni consultas directas sobre las tablas de otro módulo. Si el módulo `site-log` necesita validar un usuario, debe invocar la interfaz/contrato expuesto por `identity`.
+2. **Validación en 3 Niveles:**
+   * **Estructural (Capa Interface/DTO):** Formato de datos, campos requeridos, UUIDs, ISO dates (vía Pipes/Decoradores).
+   * **Contextual (Capa Application):** Verificación de existencia de entidades relacionadas y aislamiento del `tenantId`.
+   * **De Negocio (Capa Domain):** Reglas puras del dominio (ej. "no se pueden registrar bitácoras en etapas cerradas").
+3. **Manejo Semántico de Códigos HTTP:**
+   * `200 OK` / `201 Created` para respuestas exitosas.
+   * `400 Bad Request` para fallos de validación estructural.
+   * `401 Unauthorized` / `403 Forbidden` para autenticación y aislamiento multitenant.
+   * `404 Not Found` para recursos inexistentes.
+   * `409 Conflict` para violaciones de reglas de negocio.
 
-## 6. Estado actual
+---
 
-- [ ] **Walking skeleton** (HU-02: crear y listar proyectos, con `tenant_id` como columna `UUID` y el tenant enviado por el header `X-Tenant-Id`). Ver `docs/walking-skeleton.md`. **Es lo primero que hay que construir.**
-- [ ] `identity`: login real, tabla `tenants`, roles (HU-01, HU-03, HU-13)
-- [ ] `logbook`: bitácora y notificaciones (HU-05, HU-12)
-- [ ] `documents` (HU-04)
-- [ ] `audit` (HU-07)
+## 3. Repositorio Frontend (`saas-frontend`)
 
-Orden de construcción: skeleton → `identity` → `logbook` → `documents` → `audit`. Actualiza esta lista al terminar cada bloque.
+### 3.1. Patrón Arquitectónico: Feature-Driven Architecture
+* Organizado por capacidades/módulos del negocio (*features*) para mantener alta cohesión y coincidir visualmente con los módulos del backend.
 
-## 7. Alcance del MVP (resumen del MoSCoW)
+### 3.2. Estructura de Directorios del Frontend
+```text
+saas-frontend/
+├── src/
+│   ├── app/                      # Rutas y vistas de la aplicación (Next.js App Router / React Router)
+│   │   ├── (auth)/login/
+│   │   └── dashboard/
+│   │       ├── projects/
+│   │       ├── site-logs/
+│   │       └── documents/
+│   │
+│   ├── features/                 # Módulos funcionales del dominio
+│   │   ├── identity/             # Formularios de login, hooks de sesión y auth state
+│   │   ├── projects/             # Componentes de proyectos, etapas y Tablero Kanban
+│   │   ├── site-log/             # Formulario de bitácora, captura de fotos y feeds
+│   │   └── documents/            # Lista de planos, modal de versiones y visor de renders
+│   │
+│   ├── shared/                   # UI Library genérica
+│   │   ├── components/           # Botones, Modales, Tablas, Inputs, Badges
+│   │   ├── api/                  # Cliente HTTP Axios/Fetch configurado con interceptores JWT
+│   │   └── utils/                # Formateadores de fecha, moneda y validadores
+│   │
+│   └── types/                    # Tipos globales e interfaces compartidas
+```
 
-- **Must:** autenticación; crear proyectos; crear etapas y vincular tareas; registrar usuarios y vincularlos a un proyecto; cambiar estado y progreso de tareas y etapas.
-- **Should:** tablero kanban; importar archivos y documentación; permisos por rol o usuario; dashboard directivo (HU-08).
-- **Could:** app móvil/tablet; visualización de renders 3D; mensajes a clientes por WhatsApp.
-- **Won't (por ahora):** IA para redactar documentos; registro contable por proyecto; que los clientes vean el avance.
+### 3.3. Reglas Innegociables del Frontend
+1. **Tipado Estricto derivado del Contrato:** Los tipos de datos de las peticiones y respuestas en el frontend (`DTOs/Interfaces`) deben ser idénticos a los definidos en el contrato de la API.
+2. **Componentes UI Desacoplados:** Los componentes de `shared/components` deben ser puros e independientes del estado global o de llamadas directas a la API.
+3. **Manejo Elegante de Errores HTTP:** Capturar las respuestas `400`, `403`, `404` y `409` del backend para mostrar retroalimentación clara al usuario mediante notificaciones o alertas en interfaz.
 
-**Contrato de operación de HU-05 (bitácora), ya definido:** actor trabajador de obra; precondiciones: proyecto existente, trabajador vinculado al proyecto y al tenant, actividad activa; input: `proyectoId`, `etapaId`, `usuarioId`, `tipoEvento`, `descripcion`, `ubicacion`, `fechaOcurrencia`, `evidencia`; reglas: fecha actual o pasada, descripción de 1 a 3 frases, la etapa debe pertenecer al proyecto, el trabajador debe estar vinculado al proyecto, tipo de evento obligatorio, máximo 3 fotos de evidencia. El campo "Resultado" del contrato está incompleto en la hipótesis.
+---
 
-## 8. Decisiones pendientes (NO decidir por tu cuenta)
+## 4. Metodología de Desarrollo: Contract-First & Vertical Slices
 
-Estos puntos requieren reunión con el equipo. **Si tu tarea depende de alguno, no improvises: usa la suposición de trabajo indicada, márcala en el código con `// TODO(pendiente): <tema>` y avisa en tu respuesta.**
+### 4.1. Estrategia Contract-First
+Antes de escribir cualquier línea de código funcional en el backend o frontend para una Historia de Usuario:
+1. Se debe definir y consensuar el **Contrato de Operación**:
+   * Endpoint HTTP (`METHOD /path`).
+   * Actor y permisos requeridos.
+   * Precondiciones.
+   * DTO de entrada (Inputs).
+   * Invariantes y reglas de validación.
+   * Estructura de respuesta exitosa (Output) y códigos de error HTTP.
+2. Con el contrato definido, el desarrollo del Frontend y Backend puede avanzar en paralelo utilizando datos de prueba (*mocks*).
 
-1. **¿Dónde se guardan los archivos del módulo `documents`?** (planos, renders, presupuestos, fotos de evidencia). La hipótesis solo dice "sistema de almacenamiento externo". Opciones a evaluar: almacenamiento compatible con S3 (AWS S3, MinIO), otro servicio en la nube, o disco local solo para desarrollo.
-   *Suposición de trabajo:* definir una interfaz `FileStorage` dentro de `documents` y una implementación local en disco para desarrollo. No añadir el SDK de S3 al `pom.xml` hasta que se decida.
+### 4.2. Desarrollo por Vertical Slice
+* **No implementar capas completas a la vez** (ej. "hacer todos los modelos de DB del sistema primero").
+* Cada tarea o Pull Request debe entregar una **rebanada vertical completa** para una Historia de Usuario específica (ej. `HU-05: Bitácora de Campo`):
+  1. Tabla y migración en base de datos.
+  2. Entidad, Caso de Uso y Controlador en `saas-backend`.
+  3. Prueba de integración del Endpoint.
+  4. Formulario y vista correspondiente en `saas-frontend`.
 
-2. **¿Qué parte del dashboard entra en el MVP?** El MoSCoW pone "gráficos y métricas de avance" en *Won't*, pero HU-08 (porcentaje global de avance y alertas) es *Should*. Hay contradicción.
-   *Suposición de trabajo:* no construir el dashboard todavía. Sí calcular el porcentaje de avance en `projects` (lo exige HU-06).
+---
 
-3. **HU-12 (notificaciones): formalizar en el MoSCoW.** El equipo (vía el estudiante que lo coordina) decidió que **entra en el MVP**, pero el documento de hipótesis aún lista "enviar notificaciones al personal" en *Won't*. Falta corregir el MoSCoW.
-   *Suposición de trabajo:* HU-12 está dentro del MVP, en el módulo `logbook`.
+## 5. Instrucciones Directas para Agentes de IA (Coding Assistants)
 
-4. **Ajustes de diseño hechos respecto a la hipótesis, aún sin validar con todo el equipo:**
-   - Fusión de "Autenticación" y "Administración de roles y acceso" en un solo módulo `identity`.
-   - Nombres de módulos en inglés (`identity`, `projects`, `logbook`, `documents`, `audit`), traducidos de los de la hipótesis.
-   - Alcance ampliado de `projects` (presupuesto, hitos, prioridad, requisitos del cliente).
-   - Paquete base con mayúsculas (`com.SaaS.Constructora`), que rompe la convención de Java (minúsculas).
-   *Suposición de trabajo:* se mantienen como están.
+Al solicitar la generación o refactorización de código a un agente de IA, este debe cumplir las siguientes pautas:
 
-## 9. Documentos del repo
-
-- `docs/hipotesis.md`: documento original del equipo (hipótesis de valor, flujos, MoSCoW, backlog de HU-01 a HU-15, arquitectura C4). Consúltalo para el detalle de una historia concreta; no hace falta leerlo completo en cada sesión.
-- `docs/walking-skeleton.md`: guía paso a paso del primer esqueleto funcional, con código de referencia.
-- `backend/pom.xml`: dependencias del MVP completo.
+1. **Contexto Obligatorio:** Antes de proponer cambios, el agente debe verificar en cuál módulo (`backend`) o *feature* (`frontend`) se encuentra la tarea.
+2. **Sin Generación de Deuda Técnica:** No crear archivos genéricos de "utilidades" (`utils.js` o `helpers.ts` masivos). Ubicar la lógica en el módulo correspondiente.
+3. **Protección de Multi-tenancy:** Toda consulta o filtro en base de datos **DEBE** incluir explícitamente el `tenantId` correspondiente al contexto del usuario autenticado.
+4. **Commits y PRs Pequeños:** Generar código modular, mantenible y acompañado de sus tipos e interfaces correspondientes.
