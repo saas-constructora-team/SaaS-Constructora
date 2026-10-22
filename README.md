@@ -50,30 +50,112 @@ El frontend abre en `http://localhost:4200` y usa el proxy para llamar a `/api` 
 
 ## Probar la API
 
+Los proyectos se vinculan automáticamente a la empresa (tenant) del usuario
+autenticado. El tenant viaja dentro del JWT: no se envía `X-Tenant-Id`.
+
+Visibilidad de proyectos:
+- `ADMIN` ve todos los proyectos de su empresa.
+- `MEMBER` ve únicamente los proyectos que tiene asignados.
+- Solo `ADMIN` puede listar usuarios y gestionar asignaciones.
+- Por ahora no existe un endpoint para crear usuarios: la asignación trabaja
+  con usuarios que ya pertenezcan a la empresa.
+
 ```bash
-# Crear proyecto (201 Created)
+# 1. Login: copiar el accessToken de la respuesta
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@demo.com", "password": "Admin123!"}'
+
+TOKEN="<accessToken>"
+
+# 2. Crear proyecto (201 Created) en nombre de la empresa del token
 curl -X POST http://localhost:8080/api/projects \
-  -H "X-Tenant-Id: 11111111-1111-1111-1111-111111111111" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "Edificio Torres del Valle", "clientName": "Inmobiliaria XYZ", "location": "Tuluá, Valle del Cauca"}'
 
-# Listar proyectos (200 OK)
+# Datos opcionales de captación:
+# contactEmail, contactPhone, projectType y propertyUse
+#   (RESIDENTIAL | COMMERCIAL | INDUSTRIAL | MIXED),
+# estimatedArea, occupantCount, requiredSpaces, styleReferences,
+# budgetRange (UNDER_50M | FROM_50M_TO_100M | FROM_100M_TO_250M |
+#   FROM_250M_TO_500M | OVER_500M),
+# estimatedStartDate, estimatedDeliveryDate (YYYY-MM-DD),
+# lotOwnership (OWNED | IN_PURCHASE | RENTED) y
+# hasDeeds, hasTopographicSurvey, hasPreviousPlans, hasSitePhotos (booleanos).
+
+# 3. Listar proyectos de la empresa (200 OK)
 curl -X GET http://localhost:8080/api/projects \
-  -H "X-Tenant-Id: 11111111-1111-1111-1111-111111111111"
+  -H "Authorization: Bearer $TOKEN"
+
+PROJECT_ID="<id de la respuesta anterior>"
+
+# 4. Editar proyecto (200 OK)
+curl -X PUT http://localhost:8080/api/projects/$PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Edificio Torres del Valle - Fase 2", "clientName": "Inmobiliaria XYZ", "location": "Tuluá, Valle del Cauca"}'
+
+# 5. Eliminar proyecto (204 No Content)
+curl -X DELETE http://localhost:8080/api/projects/$PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN"
 
 # Validación: sin nombre (400 Bad Request)
 curl -X POST http://localhost:8080/api/projects \
-  -H "X-Tenant-Id: 11111111-1111-1111-1111-111111111111" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"clientName": "Cliente", "location": "Bogotá"}'
 
-# Aislamiento multi-tenant: tenant distinto no ve proyectos (lista vacía)
-curl -X GET http://localhost:8080/api/projects \
-  -H "X-Tenant-Id: 22222222-2222-2222-2222-222222222222"
-
-# Sin header X-Tenant-Id (400 Bad Request)
+# Sin token (401 Unauthorized)
 curl -X GET http://localhost:8080/api/projects
+
+# Aislamiento multi-tenant: registrar otra empresa y usar su token
+# devuelve una lista vacía (cada empresa solo ve sus propios proyectos).
 ```
+
+### Usuarios y asignaciones de proyectos
+
+Solo un `ADMIN` puede consultar los usuarios de su empresa y administrar las
+asignaciones. El `userId` se obtiene del login (`$.user.id`) o del listado de
+usuarios.
+
+```bash
+# 6. Crear un proyecto nuevo para las pruebas (si el anterior fue eliminado)
+#    y guardar el id de la respuesta en PROJECT_ID
+curl -X POST http://localhost:8080/api/projects \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Proyecto con asignaciones", "clientName": "Inmobiliaria XYZ", "location": "Tuluá, Valle del Cauca"}'
+
+PROJECT_ID="<id del proyecto recién creado>"
+
+# 7. Listar usuarios del tenant (solo ADMIN, 200 OK)
+curl -X GET http://localhost:8080/api/users \
+  -H "Authorization: Bearer $TOKEN"
+
+USER_ID="<id de un usuario de la empresa>"
+
+# 8. Asignar un usuario existente al proyecto (solo ADMIN, 201 Created)
+curl -X POST http://localhost:8080/api/projects/$PROJECT_ID/assignments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": \"$USER_ID\"}"
+
+# 9. Listar los asignados al proyecto (solo ADMIN, 200 OK)
+curl -X GET http://localhost:8080/api/projects/$PROJECT_ID/assignments \
+  -H "Authorization: Bearer $TOKEN"
+
+# 10. Desasignar un usuario (solo ADMIN, 204 No Content)
+curl -X DELETE http://localhost:8080/api/projects/$PROJECT_ID/assignments/$USER_ID \
+  -H "Authorization: Bearer $TOKEN"
+
+# Asignar dos veces al mismo usuario devuelve 409 Conflict.
+# Un proyecto o usuario de otra empresa devuelve 404 Not Found.
+```
+
+Cuando un usuario con rol `MEMBER` inicia sesión, `GET /api/projects` solo
+devuelve los proyectos que tiene asignados. Un `ADMIN` sigue viendo todos los
+proyectos de la empresa.
 
 ## Verificar en base de datos
 
