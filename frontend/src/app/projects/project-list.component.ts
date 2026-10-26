@@ -3,6 +3,7 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { Project } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
 import { ProjectAssignmentsComponent } from './project-assignments.component';
+import { ProjectStagesComponent } from './project-stages.component';
 import { ProjectService, projectErrorMessage } from './project.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -14,7 +15,7 @@ import { AuthService } from '../auth/auth.service';
 @Component({
   selector: 'app-project-list',
   standalone: true,
-  imports: [CommonModule, ProjectFormComponent, ProjectAssignmentsComponent],
+  imports: [CommonModule, ProjectFormComponent, ProjectAssignmentsComponent, ProjectStagesComponent],
   template: `
     <div class="page-shell">
       <header class="topbar">
@@ -65,6 +66,14 @@ import { AuthService } from '../auth/auth.service';
         />
       }
 
+      @if (stagesOf(); as project) {
+        <app-project-stages
+          [projectId]="project.id"
+          [projectName]="project.name"
+          (closed)="stagesOf.set(null)"
+        />
+      }
+
       @if (loading()) {
         <p class="muted">Cargando proyectos…</p>
       } @else if (projects().length === 0) {
@@ -102,6 +111,7 @@ import { AuthService } from '../auth/auth.service';
                   <td class="actions-column">
                     <div class="row-actions">
                       <button class="btn btn-small" type="button" (click)="openEdit(project)">Editar</button>
+                      <button class="btn btn-small" type="button" (click)="openStages(project)">Etapas</button>
                       @if (isAdmin) {
                         <button class="btn btn-small" type="button" (click)="openAssignments(project)">
                           Asignar
@@ -136,6 +146,7 @@ export class ProjectListComponent implements OnInit {
   readonly formOpen = signal(false);
   readonly editing = signal<Project | null>(null);
   readonly assigning = signal<Project | null>(null);
+  readonly stagesOf = signal<Project | null>(null);
 
   get isAdmin(): boolean {
     return this.role === 'ADMIN';
@@ -173,6 +184,11 @@ export class ProjectListComponent implements OnInit {
     this.assigning.set(project);
   }
 
+  openStages(project: Project): void {
+    this.notice.set(null);
+    this.stagesOf.set(project);
+  }
+
   confirmDelete(project: Project): void {
     const confirmed = window.confirm(
       `¿Eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`
@@ -190,6 +206,9 @@ export class ProjectListComponent implements OnInit {
         }
         if (this.assigning()?.id === project.id) {
           this.assigning.set(null);
+        }
+        if (this.stagesOf()?.id === project.id) {
+          this.stagesOf.set(null);
         }
         this.notice.set('Proyecto eliminado correctamente.');
         this.load();

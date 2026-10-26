@@ -5,6 +5,8 @@ import {
   CreateProjectRequest,
   Project,
   ProjectAssignment,
+  ProjectStage,
+  ProjectStageRequest,
   UpdateProjectRequest
 } from './project.model';
 
@@ -42,6 +44,29 @@ export class ProjectService {
 
   unassign(projectId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${projectId}/assignments/${userId}`);
+  }
+
+  listStages(projectId: string): Observable<ProjectStage[]> {
+    return this.http.get<ProjectStage[]>(`${this.apiUrl}/${projectId}/stages`);
+  }
+
+  createStage(projectId: string, req: ProjectStageRequest): Observable<ProjectStage> {
+    return this.http.post<ProjectStage>(`${this.apiUrl}/${projectId}/stages`, req);
+  }
+
+  updateStage(
+    projectId: string,
+    stageId: string,
+    req: ProjectStageRequest
+  ): Observable<ProjectStage> {
+    return this.http.put<ProjectStage>(
+      `${this.apiUrl}/${projectId}/stages/${stageId}`,
+      req
+    );
+  }
+
+  deleteStage(projectId: string, stageId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${projectId}/stages/${stageId}`);
   }
 }
 

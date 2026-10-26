@@ -68,3 +68,17 @@ export interface ProjectAssignment {
   userRole: string | null;
   assignedAt: string;
 }
+
+/** Etapa de un proyecto (las seis iniciales se crean con el proyecto). */
+export interface ProjectStage {
+  id: string;
+  projectId: string;
+  name: string;
+  order: number;
+  createdAt: string;
+}
+
+/** Cuerpo de alta o edición de una etapa: el backend solo permite el nombre. */
+export interface ProjectStageRequest {
+  name: string;
+}
