@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
-import { Project } from './project.model';
+import { catchError, forkJoin, of } from 'rxjs';
+import { Project, ProjectStage } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
 import { ProjectAssignmentsComponent } from './project-assignments.component';
 import { ProjectStagesComponent } from './project-stages.component';
+import { ProjectStageProgressService } from './project-stage-progress.service';
 import { ProjectService, projectErrorMessage } from './project.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -70,7 +72,7 @@ import { AuthService } from '../auth/auth.service';
         <app-project-stages
           [projectId]="project.id"
           [projectName]="project.name"
-          (closed)="stagesOf.set(null)"
+          (closed)="onStagesClosed()"
         />
       }
 
@@ -96,6 +98,7 @@ import { AuthService } from '../auth/auth.service';
                 <th>Cliente</th>
                 <th>Ubicación</th>
                 <th>Estado</th>
+                <th>Etapa</th>
                 <th>Creado</th>
                 <th class="actions-column">Acciones</th>
               </tr>
@@ -107,6 +110,25 @@ import { AuthService } from '../auth/auth.service';
                   <td>{{ project.clientName || '—' }}</td>
                   <td>{{ project.location || '—' }}</td>
                   <td><span class="status-badge">{{ statusLabel(project.status) }}</span></td>
+                  <td>
+                    @if (stagesLoading()) {
+                      <span class="muted">…</span>
+                    } @else if (stagesFor(project.id).length === 0) {
+                      <span class="muted">—</span>
+                    } @else {
+                      <select
+                        class="stage-select"
+                        [attr.aria-label]="'Etapa actual de ' + project.name"
+                        (change)="changeStage(project, $event)"
+                      >
+                        @for (stage of stagesFor(project.id); track stage.id) {
+                          <option [value]="stage.id" [selected]="stage.id === currentStageId(project.id)">
+                            {{ stage.order }}. {{ stage.name }}
+                          </option>
+                        }
+                      </select>
+                    }
+                  </td>
                   <td>{{ project.createdAt | date: 'dd/MM/yyyy' }}</td>
                   <td class="actions-column">
                     <div class="row-actions">
@@ -130,16 +152,38 @@ import { AuthService } from '../auth/auth.service';
       }
     </div>
   `,
-  styles: []
+  styles: [`
+    .stage-select {
+      width: 100%;
+      max-width: 16rem;
+      padding: 0.35rem 0.4rem;
+      border: 1px solid #cbd2d9;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2933;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .stage-select:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+    }
+  `]
 })
 export class ProjectListComponent implements OnInit {
   private readonly projectsService = inject(ProjectService);
+  private readonly stageProgress = inject(ProjectStageProgressService);
   readonly auth = inject(AuthService);
 
   @Input() role = '';
 
   readonly session = this.auth.session;
   readonly projects = signal<Project[]>([]);
+  readonly stages = signal<Record<string, ProjectStage[]>>({});
+  readonly stagesLoading = signal(false);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
@@ -189,6 +233,42 @@ export class ProjectListComponent implements OnInit {
     this.stagesOf.set(project);
   }
 
+  /** Al cerrar el panel, refresca las etapas para reflejar altas o cambios. */
+  onStagesClosed(): void {
+    this.stagesOf.set(null);
+    this.loadStages(this.projects());
+  }
+
+  /** Etapas del proyecto, en el orden definido por el backend. */
+  stagesFor(projectId: string): ProjectStage[] {
+    return this.stages()[projectId] ?? [];
+  }
+
+  /**
+   * Etapa actual del proyecto: la última elegida o, si nunca se cambió,
+   * la primera etapa (donde el backend deja todo proyecto nuevo).
+   */
+  currentStageId(projectId: string): string | null {
+    const stages = this.stagesFor(projectId);
+    if (stages.length === 0) {
+      return null;
+    }
+    const saved = this.stageProgress.stageId(projectId);
+    return (stages.find(stage => stage.id === saved) ?? stages[0]).id;
+  }
+
+  changeStage(project: Project, event: Event): void {
+    const stageId = (event.target as HTMLSelectElement).value;
+    const stage = this.stagesFor(project.id).find(item => item.id === stageId);
+    if (!stage) {
+      return;
+    }
+
+    this.stageProgress.select(project.id, stage.id);
+    this.error.set(null);
+    this.notice.set(`"${project.name}" ahora está en la etapa "${stage.name}".`);
+  }
+
   confirmDelete(project: Project): void {
     const confirmed = window.confirm(
       `¿Eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`
@@ -210,6 +290,7 @@ export class ProjectListComponent implements OnInit {
         if (this.stagesOf()?.id === project.id) {
           this.stagesOf.set(null);
         }
+        this.stageProgress.clear(project.id);
         this.notice.set('Proyecto eliminado correctamente.');
         this.load();
       },
@@ -232,11 +313,37 @@ export class ProjectListComponent implements OnInit {
       next: projects => {
         this.projects.set(projects);
         this.loading.set(false);
+        this.loadStages(projects);
       },
       error: err => {
         this.loading.set(false);
         this.error.set(projectErrorMessage(err));
       }
+    });
+  }
+
+  /** Carga las etapas de todos los proyectos para poder elegir la actual. */
+  private loadStages(projects: Project[]): void {
+    if (projects.length === 0) {
+      this.stages.set({});
+      this.stagesLoading.set(false);
+      return;
+    }
+
+    this.stagesLoading.set(true);
+    forkJoin(
+      projects.map(project =>
+        this.projectsService.listStages(project.id).pipe(
+          catchError(() => of<ProjectStage[]>([]))
+        )
+      )
+    ).subscribe(stageLists => {
+      const byProject: Record<string, ProjectStage[]> = {};
+      projects.forEach((project, index) => {
+        byProject[project.id] = stageLists[index] ?? [];
+      });
+      this.stages.set(byProject);
+      this.stagesLoading.set(false);
     });
   }
 }
