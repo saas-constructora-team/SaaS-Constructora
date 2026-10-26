@@ -408,7 +408,7 @@ Respuesta `201 Created`:
 }
 ```
 
-**`GET /api/projects`**: devuelve `200 OK` con un arreglo de `ProjectResponse`, solo del tenant indicado en el header, ordenado por fecha descendente.
+**`GET /api/projects`**: devuelve `200 OK` con un arreglo de `ProjectResponse`, solo del tenant (`tenant_id`) contenido en el JWT del usuario autenticado, ordenado por fecha descendente. El header `X-Tenant-Id` se ignora para evitar suplantación entre empresas.
 
 ## 8. Frontend Angular
 
