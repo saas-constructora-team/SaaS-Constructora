@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UserManagementComponent } from './user-management.component';
 import { UserService } from './user.service';
 import { AuthService } from '../auth/auth.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { UserSummary } from './user.model';
 
 describe('UserManagementComponent', () => {
@@ -34,7 +34,7 @@ describe('UserManagementComponent', () => {
 
     mockUserService.list.and.returnValue(of(mockUsers));
     mockAuthService.session.and.returnValue({
-      user: { id: '1', email: 'admin@example.com', fullName: 'Admin User', role: 'ADMIN' },
+      user: { id: '1', tenantId: 'tenant', email: 'admin@example.com', fullName: 'Admin User', role: 'ADMIN' },
       accessToken: 'fake-token',
       tokenType: 'Bearer',
       expiresInSeconds: 3600
@@ -65,7 +65,7 @@ describe('UserManagementComponent', () => {
 
   it('should handle 403 error', () => {
     const error403 = { status: 403, statusText: 'Forbidden' };
-    mockUserService.list.and.returnValue(of(error403));
+    mockUserService.list.and.returnValue(throwError(() => error403));
     
     fixture.detectChanges();
     expect(component.error()).toContain('No tienes permisos');
@@ -73,14 +73,14 @@ describe('UserManagementComponent', () => {
 
   it('should handle 401 error', () => {
     const error401 = { status: 401, statusText: 'Unauthorized' };
-    mockUserService.list.and.returnValue(of(error401));
+    mockUserService.list.and.returnValue(throwError(() => error401));
     
     fixture.detectChanges();
     expect(component.error()).toContain('Debes iniciar sesión');
   });
 
   it('should call logout when button is clicked', () => {
-    const logoutButton = fixture.nativeElement.querySelector('.btn-logout');
+    const logoutButton = fixture.nativeElement.querySelector('.btn-ghost');
     logoutButton?.click();
     expect(mockAuthService.logout).toHaveBeenCalled();
   });

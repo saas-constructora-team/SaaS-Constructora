@@ -50,7 +50,7 @@ import { AuthService } from './auth/auth.service';
     `
     .app-container {
       min-height: 100vh;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #F3F1EC;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
@@ -135,21 +135,21 @@ import { AuthService } from './auth/auth.service';
     }
 
     .role-admin {
-      background: #fed7aa;
-      color: #ea580c;
-      border: 1px solid #fb923c;
+      background: #f1f3f5;
+      color: #52606d;
+      border: 1px solid #d9dee4;
     }
 
     .role-member {
-      background: #bfdbfe;
-      color: #2563eb;
-      border: 1px solid #60a5fa;
+      background: #eef0ff;
+      color: #4c51bf;
+      border: 1px solid #c7cdfb;
     }
 
     .btn-logout {
-      background: #ef4444;
-      color: white;
-      border: none;
+      background: #fff;
+      color: #334e68;
+      border: 1px solid #cbd2d9;
       padding: 8px 16px;
       border-radius: 8px;
       font-weight: 600;
@@ -158,9 +158,7 @@ import { AuthService } from './auth/auth.service';
     }
 
     .btn-logout:hover {
-      background: #dc2626;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+      background: #f8fafc;
     }
 
     .app-content {
@@ -196,15 +194,15 @@ import { AuthService } from './auth/auth.service';
     }
 
     .role-badge.admin {
-      background: #fef3c7;
-      color: #d97706;
-      border: 1px solid #fbbf24;
+      background: #f1f3f5;
+      color: #52606d;
+      border: 1px solid #d9dee4;
     }
 
     .role-badge.member {
-      background: #dbeafe;
-      color: #2563eb;
-      border: 1px solid #60a5fa;
+      background: #eef0ff;
+      color: #4c51bf;
+      border: 1px solid #c7cdfb;
     }
 
     .status-active {
@@ -213,7 +211,7 @@ import { AuthService } from './auth/auth.service';
     }
 
     .status-inactive {
-      color: #ef4444;
+      color: #7b8794;
       font-weight: 600;
     }
     `

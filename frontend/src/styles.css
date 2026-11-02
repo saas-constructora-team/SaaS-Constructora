@@ -1,5 +1,11 @@
 /* You can add global styles to this file, and also import other style files */
 
+:root {
+  --color-primary: #5a67d8;
+  --color-primary-hover: #4c51bf;
+  --color-danger: #98140b;
+}
+
 html,
 body {
   height: 100%;
@@ -8,7 +14,7 @@ body {
 body {
   margin: 0;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: #f4f6f9;
+  background: #F3F1EC;
   color: #1f2933;
   -webkit-font-smoothing: antialiased;
 }
@@ -39,7 +45,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0066cc;
+  color: var(--color-primary);
 }
 
 .auth-title {
@@ -76,8 +82,8 @@ body {
 
 .auth-input:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.15);
 }
 
 .auth-field-error {
@@ -109,7 +115,7 @@ body {
   padding: 0.75rem;
   border: none;
   border-radius: 6px;
-  background: #0066cc;
+  background: var(--color-primary);
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
@@ -117,7 +123,7 @@ body {
 }
 
 .auth-btn:hover:not(:disabled) {
-  background: #0055a3;
+  background: var(--color-primary-hover);
 }
 
 .auth-btn:disabled {
@@ -135,7 +141,7 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: #0066cc;
+  color: var(--color-primary);
   font-size: 0.875rem;
   text-decoration: underline;
   cursor: pointer;
@@ -232,7 +238,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #0066cc;
+  color: var(--color-primary);
 }
 
 .page-title {
@@ -284,13 +290,13 @@ body {
 }
 
 .btn-primary {
-  background: #0066cc;
-  border-color: #0066cc;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0055a3;
+  background: var(--color-primary-hover);
 }
 
 .btn-ghost {
@@ -305,8 +311,8 @@ body {
 }
 
 .btn-danger-ghost {
-  border-color: #f0c2bd;
-  color: #b00020;
+  border-color: #e4b8b4;
+  color: var(--color-danger);
   background: #fff;
 }
 
@@ -388,8 +394,8 @@ body {
 
 .form-input:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.15);
 }
 
 .form-error {
@@ -466,6 +472,74 @@ body {
   font-weight: 600;
 }
 
+.status-active {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.status-inactive {
+  color: #7b8794;
+  font-weight: 600;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background: #f1f3f5;
+  border-color: #d9dee4;
+  color: #52606d;
+}
+
+.role-badge.member {
+  background: #eef0ff;
+  border-color: #c7cdfb;
+  color: #4c51bf;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  min-width: 0;
+  padding: 1.1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.kpi-label {
+  margin: 0 0 0.5rem;
+  color: #52606d;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kpi-value {
+  margin: 0;
+  color: #1f2933;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.kpi-caption {
+  margin: 0.4rem 0 0;
+  color: #7b8794;
+  font-size: 0.75rem;
+}
+
 .actions-column {
   width: 1%;
   white-space: nowrap;
@@ -520,6 +594,10 @@ body {
 
 @media (max-width: 720px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
     grid-template-columns: 1fr;
   }
 

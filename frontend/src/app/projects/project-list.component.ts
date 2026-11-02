@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, Input, OnInit, inject, signal } from '@angular/core';
 import { catchError, forkJoin, of } from 'rxjs';
 import { Project, ProjectStage } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
@@ -76,6 +76,32 @@ import { AuthService } from '../auth/auth.service';
         />
       }
 
+      @if (!loading() && !stagesLoading() && projects().length > 0) {
+        <section class="kpi-grid" aria-label="Indicadores de proyectos">
+          <article class="kpi-card">
+            <p class="kpi-label">Proyectos Activos</p>
+            <p class="kpi-value">{{ activeProjectsCount() }}</p>
+            <p class="kpi-caption">Proyectos con estado activo</p>
+          </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Etapas en Progreso</p>
+            <p class="kpi-value">{{ stagesInProgressCount() }}</p>
+            <p class="kpi-caption">Proyectos activos antes de su etapa final</p>
+          </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Avance Promedio</p>
+            <p class="kpi-value">
+              @if (averageProgressPercentage() !== null) {
+                {{ averageProgressPercentage() }}%
+              } @else {
+                —
+              }
+            </p>
+            <p class="kpi-caption">Promedio según la etapa actual</p>
+          </article>
+        </section>
+      }
+
       @if (loading()) {
         <p class="muted">Cargando proyectos…</p>
       } @else if (projects().length === 0) {
@@ -116,17 +142,37 @@ import { AuthService } from '../auth/auth.service';
                     } @else if (stagesFor(project.id).length === 0) {
                       <span class="muted">—</span>
                     } @else {
-                      <select
-                        class="stage-select"
-                        [attr.aria-label]="'Etapa actual de ' + project.name"
-                        (change)="changeStage(project, $event)"
-                      >
-                        @for (stage of stagesFor(project.id); track stage.id) {
-                          <option [value]="stage.id" [selected]="stage.id === currentStageId(project.id)">
-                            {{ stage.order }}. {{ stage.name }}
-                          </option>
-                        }
-                      </select>
+                      <div class="stage-picker">
+                        <button
+                          class="stage-trigger"
+                          type="button"
+                          [attr.aria-label]="'Etapa actual de ' + project.name"
+                          [attr.aria-expanded]="stageOptions.matches(':popover-open')"
+                          (click)="toggleStageOptions($event)"
+                        >
+                          {{ currentStageLabel(project.id) }}
+                          <span class="stage-chevron" aria-hidden="true"></span>
+                        </button>
+                        <div
+                          #stageOptions
+                          class="stage-options"
+                          popover="manual"
+                          role="listbox"
+                          [attr.aria-label]="'Etapas de ' + project.name"
+                        >
+                          @for (stage of stagesFor(project.id); track stage.id) {
+                            <button
+                              class="stage-option"
+                              type="button"
+                              role="option"
+                              [attr.aria-selected]="stage.id === currentStageId(project.id)"
+                              (click)="changeStage(project, stage); stageOptions.hidePopover()"
+                            >
+                              {{ stage.order }}. {{ stage.name }}
+                            </button>
+                          }
+                        </div>
+                      </div>
                     }
                   </td>
                   <td>{{ project.createdAt | date: 'dd/MM/yyyy' }}</td>
@@ -153,23 +199,79 @@ import { AuthService } from '../auth/auth.service';
     </div>
   `,
   styles: [`
-    .stage-select {
-      width: 100%;
+    .stage-picker {
+      position: relative;
+      width: max-content;
       max-width: 16rem;
-      padding: 0.35rem 0.4rem;
-      border: 1px solid #cbd2d9;
-      border-radius: 6px;
-      background: #fff;
-      color: #1f2933;
-      font-family: inherit;
-      font-size: 0.85rem;
+    }
+
+    .stage-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.2rem 0.55rem;
+      border: 1px solid #c7cdfb;
+      border-radius: 999px;
+      background: #eef0ff;
+      color: #4c51bf;
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 600;
       cursor: pointer;
     }
 
-    .stage-select:focus {
+    .stage-trigger:focus-visible,
+    .stage-option:focus-visible {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+      box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+    }
+
+    .stage-chevron {
+      width: 0.4rem;
+      height: 0.4rem;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: translateY(-0.1rem) rotate(45deg);
+    }
+
+    .stage-options {
+      position: fixed;
+      inset: auto;
+      margin: 0;
+      display: grid;
+      width: max-content;
+      max-width: calc(100vw - 1rem);
+      max-height: none;
+      overflow: visible;
+      padding: 0.3rem;
+      border: 1px solid #e3e8ef;
+      border-radius: 8px;
+      background: #fff;
+      color: #1f2933;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    }
+
+    .stage-options:not(:popover-open) {
+      display: none;
+    }
+
+    .stage-option {
+      padding: 0.5rem 0.6rem;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #1f2933;
+      font: inherit;
+      font-size: 0.8rem;
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .stage-option:hover,
+    .stage-option[aria-selected="true"] {
+      background: #eef0ff;
+      color: #4c51bf;
     }
   `]
 })
@@ -191,6 +293,38 @@ export class ProjectListComponent implements OnInit {
   readonly editing = signal<Project | null>(null);
   readonly assigning = signal<Project | null>(null);
   readonly stagesOf = signal<Project | null>(null);
+
+  activeProjectsCount(): number {
+    return this.projects().filter(project => project.status === 'ACTIVE').length;
+  }
+
+  stagesInProgressCount(): number {
+    return this.projects().filter(project => {
+      if (project.status !== 'ACTIVE') {
+        return false;
+      }
+      const stages = this.stagesFor(project.id);
+      const currentIndex = stages.findIndex(stage => stage.id === this.currentStageId(project.id));
+      return currentIndex >= 0 && currentIndex < stages.length - 1;
+    }).length;
+  }
+
+  averageProgressPercentage(): number | null {
+    const progressValues = this.projects()
+      .filter(project => project.status === 'ACTIVE')
+      .map(project => {
+        const stages = this.stagesFor(project.id);
+        const currentIndex = stages.findIndex(stage => stage.id === this.currentStageId(project.id));
+        return currentIndex >= 0 ? ((currentIndex + 1) / stages.length) * 100 : null;
+      })
+      .filter((progress): progress is number => progress !== null);
+
+    if (progressValues.length === 0) {
+      return null;
+    }
+
+    return Math.round(progressValues.reduce((total, progress) => total + progress, 0) / progressValues.length);
+  }
 
   get isAdmin(): boolean {
     return this.role === 'ADMIN';
@@ -257,10 +391,55 @@ export class ProjectListComponent implements OnInit {
     return (stages.find(stage => stage.id === saved) ?? stages[0]).id;
   }
 
-  changeStage(project: Project, event: Event): void {
-    const stageId = (event.target as HTMLSelectElement).value;
-    const stage = this.stagesFor(project.id).find(item => item.id === stageId);
-    if (!stage) {
+  currentStageLabel(projectId: string): string {
+    const stage = this.stagesFor(projectId).find(item => item.id === this.currentStageId(projectId));
+    return stage ? `${stage.order}. ${stage.name}` : '—';
+  }
+
+  toggleStageOptions(event: MouseEvent): void {
+    const trigger = event.currentTarget as HTMLButtonElement;
+    const options = trigger.nextElementSibling as HTMLElement;
+    if (options.matches(':popover-open')) {
+      options.hidePopover();
+      return;
+    }
+
+    options.showPopover();
+    const triggerBounds = trigger.getBoundingClientRect();
+    const optionsBounds = options.getBoundingClientRect();
+    const gap = 6;
+    const viewportPadding = 8;
+    const belowTop = triggerBounds.bottom + gap;
+    const fitsBelow = belowTop + optionsBounds.height <= window.innerHeight - viewportPadding;
+    const fitsAbove = triggerBounds.top - optionsBounds.height - gap >= viewportPadding;
+    const top = fitsBelow || !fitsAbove
+      ? Math.min(belowTop, window.innerHeight - optionsBounds.height - viewportPadding)
+      : triggerBounds.top - optionsBounds.height - gap;
+    const left = Math.min(
+      Math.max(viewportPadding, triggerBounds.left),
+      window.innerWidth - optionsBounds.width - viewportPadding
+    );
+
+    options.style.top = `${Math.max(viewportPadding, top)}px`;
+    options.style.left = `${Math.max(viewportPadding, left)}px`;
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeStageOptionsOnOutsideClick(event: MouseEvent): void {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const target = event.target;
+
+    document.querySelectorAll<HTMLElement>('.stage-options:popover-open').forEach(options => {
+      if (!options.parentElement?.contains(target)) {
+        options.hidePopover();
+      }
+    });
+  }
+
+  changeStage(project: Project, stage: ProjectStage): void {
+    if (!this.stagesFor(project.id).some(item => item.id === stage.id)) {
       return;
     }
 
