@@ -26,15 +26,17 @@ const GOOGLE_RETRY_MS = 250;
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <p class="auth-brand">Constructora</p>
-    <h1 class="auth-title">Iniciar sesión</h1>
-    <p class="auth-subtitle">Accede con tu correo y contraseña o con tu cuenta de Google.</p>
+    <div class="auth-form-heading">
+      <p class="auth-brand">SaaS Constructora</p>
+      <h1 class="auth-title">Iniciar sesión</h1>
+      <p class="auth-subtitle">Accede con tu correo y contraseña o con tu cuenta de Google.</p>
+    </div>
 
     @if (error()) {
       <div class="auth-alert auth-alert-error" role="alert">{{ error() }}</div>
     }
 
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
       <div class="auth-field">
         <label class="auth-label" for="login-email">Correo electrónico</label>
         <input
