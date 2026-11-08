@@ -218,7 +218,7 @@ body {
 .page-shell {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
+  padding: 0 1.5rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -603,5 +603,212 @@ body {
 
   .topbar-actions {
     width: 100%;
+  }
+}
+
+/* --- Aplicación autenticada --- */
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  background: #F3F1EC;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.app-sidebar {
+  height: calc(100vh - 32px);
+  min-height: 420px;
+  margin: 16px 8px 16px 16px;
+  padding: 16px 8px;
+  box-sizing: border-box;
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #eef0f2;
+  border-radius: 28px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+  border-radius: 50%;
+  background: #eef0ff;
+  color: #5a67d8;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.workspace {
+  min-width: 0;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-tab {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #3f454b;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-tab svg,
+.sidebar-logout svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-tab:first-child svg rect {
+  fill: currentColor;
+  stroke: none;
+}
+
+.nav-tab.active {
+  background: #222326;
+  color: #fff;
+}
+
+.nav-tab:not(.active):hover {
+  background: #f1f3f5;
+}
+
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.sidebar-logout {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #25282c;
+  cursor: pointer;
+}
+
+.sidebar-logout:hover {
+  background: #f1f3f5;
+}
+
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #d98b71;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: default;
+}
+
+.welcome-header {
+  min-height: 88px;
+  padding: 18px 28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #e3e8ef;
+}
+
+.welcome-title {
+  margin: 0 0 4px;
+  color: #1f2933;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.welcome-subtitle {
+  margin: 0;
+  color: #52606d;
+  font-size: 0.9rem;
+}
+
+.app-content {
+  width: 100%;
+  max-width: 1280px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 20px 28px 0;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    width: auto;
+    height: auto;
+    min-height: 0;
+    margin: 12px 12px 0;
+    padding: 10px 14px;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    border: 1px solid #eef0f2;
+  }
+
+  .brand-mark {
+    flex: 0 0 40px;
+    margin: 0 12px 0 0;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    margin-right: auto;
+  }
+
+  .sidebar-footer {
+    flex-direction: row-reverse;
+    gap: 6px;
+    margin: 0 0 0 8px;
+  }
+
+  .welcome-header {
+    min-height: 0;
+    padding: 16px 18px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-content {
+    padding: 20px 18px 0;
   }
 }

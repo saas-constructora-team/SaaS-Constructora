@@ -10,212 +10,104 @@ import { AuthService } from './auth/auth.service';
   imports: [AuthComponent, ProjectListComponent, UserManagementComponent],
   template: `
     @if (auth.session(); as session) {
-      <div class="app-container">
-        <header class="app-header">
-          <div class="header-content">
-            <p class="brand">Constructora</p>
-            @if (session.user.role === 'ADMIN') {
-              <nav class="nav-tabs">
-                <a class="nav-tab active" href="#">Usuarios</a>
-                <a class="nav-tab" href="#" (click)="showProjects()">Proyectos</a>
-              </nav>
-            } @else {
-              <h1 class="page-title">Proyectos de la empresa</h1>
-            }
-            <div class="user-info">
-              <span class="user-name">{{ session.user.fullName }}</span>
-              <span class="user-role role-{{ session.user.role.toLowerCase() }}">{{ session.user.role }}</span>
-              <button class="btn-logout" type="button" (click)="logout()">Cerrar sesión</button>
-            </div>
-          </div>
-        </header>
-        
-        <main class="app-content">
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <span class="brand-mark" aria-label="Constructora" title="Constructora">C</span>
           @if (session.user.role === 'ADMIN') {
-            @if (showUserManagement()) {
-              <app-user-management [role]="session.user.role" />
+            <nav class="sidebar-nav" aria-label="Secciones principales">
+              <button
+                class="nav-tab"
+                type="button"
+                title="Proyectos"
+                aria-label="Proyectos"
+                [class.active]="!showUserManagement()"
+                [attr.aria-pressed]="!showUserManagement()"
+                (click)="showProjects()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="4" width="6" height="6" rx="1.5" />
+                  <rect x="14" y="4" width="6" height="6" rx="1.5" />
+                  <rect x="4" y="14" width="6" height="6" rx="1.5" />
+                  <rect x="14" y="14" width="6" height="6" rx="1.5" />
+                </svg>
+              </button>
+              <button
+                class="nav-tab"
+                type="button"
+                title="Usuarios"
+                aria-label="Usuarios"
+                [class.active]="showUserManagement()"
+                [attr.aria-pressed]="showUserManagement()"
+                (click)="showUsers()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="9" cy="8" r="3" />
+                  <path d="M3.5 19v-1.2a5.5 5.5 0 0 1 11 0V19z" />
+                  <path d="M16 5.3a3 3 0 0 1 0 5.8M17 13.5a5 5 0 0 1 3.5 4.8V19h-4" />
+                </svg>
+              </button>
+            </nav>
+          }
+          <div class="sidebar-footer">
+            <button
+              class="sidebar-logout"
+              type="button"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              (click)="logout()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 17l5-5-5-5M15 12H3" />
+                <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+              </svg>
+            </button>
+            <span
+              class="user-avatar"
+              [attr.title]="roleLabel(session.user.role)"
+              [attr.aria-label]="session.user.fullName + ', ' + roleLabel(session.user.role)"
+            >
+              {{ userInitials(session.user.fullName) }}
+            </span>
+          </div>
+        </aside>
+
+        <div class="workspace">
+          <header class="welcome-header">
+            <div>
+              <h1
+                class="welcome-title"
+                [attr.title]="roleLabel(session.user.role)"
+              >
+                Hola, {{ session.user.fullName }}
+              </h1>
+              <p class="welcome-subtitle">
+                @if (session.user.role === 'ADMIN' && showUserManagement()) {
+                  Administra los usuarios de tu empresa.
+                } @else {
+                  Consulta los proyectos y sus etapas.
+                }
+              </p>
+            </div>
+          </header>
+
+          <main class="app-content">
+            @if (session.user.role === 'ADMIN') {
+              @if (showUserManagement()) {
+                <app-user-management [role]="session.user.role" />
+              } @else {
+                <app-project-list [role]="session.user.role" />
+              }
             } @else {
               <app-project-list [role]="session.user.role" />
             }
-          } @else {
-            <app-project-list [role]="session.user.role" />
-          }
-        </main>
+          </main>
+        </div>
       </div>
     } @else {
       <app-auth />
     }
   `,
-  styles: [
-    `
-    .app-container {
-      min-height: 100vh;
-      background: #F3F1EC;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
-    .app-header {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      padding: 20px 0;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .header-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .brand {
-      font-size: 24px;
-      font-weight: 700;
-      color: #5a67d8;
-      margin: 0;
-    }
-
-    .nav-tabs {
-      display: flex;
-      gap: 20px;
-      margin-top: 10px;
-    }
-
-    .nav-tab {
-      padding: 8px 16px;
-      text-decoration: none;
-      color: #4a5568;
-      font-weight: 500;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      cursor: pointer;
-    }
-
-    .nav-tab.active {
-      background: #5a67d8;
-      color: white;
-      box-shadow: 0 2px 8px rgba(90, 103, 216, 0.3);
-    }
-
-    .nav-tab:not(.active):hover {
-      background: #f7fafc;
-      color: #5a67d8;
-    }
-
-    .page-title {
-      font-size: 20px;
-      color: #2d3748;
-      margin: 10px 0;
-      font-weight: 600;
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .user-name {
-      font-weight: 600;
-      color: #2d3748;
-    }
-
-    .user-role {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .role-admin {
-      background: #f1f3f5;
-      color: #52606d;
-      border: 1px solid #d9dee4;
-    }
-
-    .role-member {
-      background: #eef0ff;
-      color: #4c51bf;
-      border: 1px solid #c7cdfb;
-    }
-
-    .btn-logout {
-      background: #fff;
-      color: #334e68;
-      border: 1px solid #cbd2d9;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-logout:hover {
-      background: #f8fafc;
-    }
-
-    .app-content {
-      max-width: 1200px;
-      margin: 30px auto;
-      padding: 0 20px;
-    }
-
-    /* User management component styles */
-    .permissions-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 5px;
-    }
-
-    .permission-tag {
-      background: #f3e8ff;
-      color: #7c3aed;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      border: 1px solid #e9d5ff;
-    }
-
-    .role-badge {
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .role-badge.admin {
-      background: #f1f3f5;
-      color: #52606d;
-      border: 1px solid #d9dee4;
-    }
-
-    .role-badge.member {
-      background: #eef0ff;
-      color: #4c51bf;
-      border: 1px solid #c7cdfb;
-    }
-
-    .status-active {
-      color: #10b981;
-      font-weight: 600;
-    }
-
-    .status-inactive {
-      color: #7b8794;
-      font-weight: 600;
-    }
-    `
-  ]
+  styles: []
 })
 export class AppComponent {
   readonly auth = inject(AuthService);
@@ -225,8 +117,30 @@ export class AppComponent {
     return this.showUserManagementState;
   }
 
+  showUsers(): void {
+    this.showUserManagementState = true;
+  }
+
   showProjects(): void {
     this.showUserManagementState = false;
+  }
+
+  userInitials(fullName: string): string {
+    return fullName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(name => name.charAt(0))
+      .join('')
+      .toUpperCase();
+  }
+
+  roleLabel(role: string): string {
+    switch (role) {
+      case 'ADMIN': return 'Administrador';
+      case 'MEMBER': return 'Miembro';
+      default: return role;
+    }
   }
 
   logout(): void {
