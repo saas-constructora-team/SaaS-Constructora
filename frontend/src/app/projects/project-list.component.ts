@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, Input, OnInit, inject, signal } from '@angular/core';
 import { catchError, forkJoin, of } from 'rxjs';
-import { Project, ProjectStage } from './project.model';
+import { Project, ProjectAssignment, ProjectStage } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
 import { ProjectAssignmentsComponent } from './project-assignments.component';
 import { ProjectStagesComponent } from './project-stages.component';
@@ -64,7 +64,7 @@ import { AuthService } from '../auth/auth.service';
         <app-project-assignments
           [projectId]="project.id"
           [projectName]="project.name"
-          (closed)="assigning.set(null)"
+          (closed)="onAssignmentsClosed()"
         />
       }
 
@@ -125,6 +125,9 @@ import { AuthService } from '../auth/auth.service';
                 <th>Ubicación</th>
                 <th>Estado</th>
                 <th>Etapa</th>
+                @if (isAdmin) {
+                  <th>Asignado a</th>
+                }
                 <th>Creado</th>
                 <th class="actions-column">Acciones</th>
               </tr>
@@ -135,7 +138,14 @@ import { AuthService } from '../auth/auth.service';
                   <td class="cell-strong">{{ project.name }}</td>
                   <td>{{ project.clientName || '—' }}</td>
                   <td>{{ project.location || '—' }}</td>
-                  <td><span class="status-badge">{{ statusLabel(project.status) }}</span></td>
+                  <td>
+                    <span
+                      class="status-badge"
+                      [class.status-completed]="projectStatus(project) === 'COMPLETED'"
+                    >
+                      {{ statusLabel(projectStatus(project)) }}
+                    </span>
+                  </td>
                   <td>
                     @if (stagesLoading()) {
                       <span class="muted">…</span>
@@ -175,19 +185,80 @@ import { AuthService } from '../auth/auth.service';
                       </div>
                     }
                   </td>
+                  @if (isAdmin) {
+                    <td>
+                      @if (assignmentsLoading()) {
+                        <span class="muted">Cargando…</span>
+                      } @else if (assignmentsError()) {
+                        <span class="muted">No se pudo cargar</span>
+                      } @else if (assignmentsFor(project.id).length === 0) {
+                        <span class="muted">Sin asignar</span>
+                      } @else {
+                        <div class="assigned-users" [attr.aria-label]="'Personal asignado a ' + project.name">
+                          @for (assignment of assignmentsFor(project.id); track assignment.id) {
+                            <span
+                              class="assigned-user"
+                              [attr.title]="assignment.userEmail ?? undefined"
+                            >
+                              {{ assignment.userFullName ?? 'Usuario' }}
+                            </span>
+                          }
+                        </div>
+                      }
+                    </td>
+                  }
                   <td>{{ project.createdAt | date: 'dd/MM/yyyy' }}</td>
                   <td class="actions-column">
                     <div class="row-actions">
-                      <button class="btn btn-small" type="button" (click)="openEdit(project)">Editar</button>
-                      <button class="btn btn-small" type="button" (click)="openStages(project)">Etapas</button>
-                      @if (isAdmin) {
-                        <button class="btn btn-small" type="button" (click)="openAssignments(project)">
-                          Asignar
-                        </button>
-                      }
-                      <button class="btn btn-small btn-danger-ghost" type="button" (click)="confirmDelete(project)">
-                        Eliminar
+                      <button class="btn btn-small quick-action" type="button" (click)="openEdit(project)">
+                        Editar
                       </button>
+                      <div class="row-actions-menu">
+                        <button
+                          class="btn btn-small more-actions-trigger"
+                          type="button"
+                          [attr.aria-label]="'Más acciones para ' + project.name"
+                          aria-haspopup="menu"
+                          [attr.aria-expanded]="actionMenu.matches(':popover-open')"
+                          (click)="toggleActionMenu($event)"
+                        >
+                          <span aria-hidden="true">⋯</span>
+                        </button>
+                        <div
+                          #actionMenu
+                          class="action-menu"
+                          popover="manual"
+                          role="menu"
+                          [attr.aria-label]="'Más acciones para ' + project.name"
+                        >
+                          <button
+                            class="action-menu-item"
+                            type="button"
+                            role="menuitem"
+                            (click)="actionMenu.hidePopover(); openStages(project)"
+                          >
+                            Etapas
+                          </button>
+                          @if (isAdmin) {
+                            <button
+                              class="action-menu-item"
+                              type="button"
+                              role="menuitem"
+                              (click)="actionMenu.hidePopover(); openAssignments(project)"
+                            >
+                              Asignar
+                            </button>
+                          }
+                          <button
+                            class="action-menu-item action-menu-danger"
+                            type="button"
+                            role="menuitem"
+                            (click)="actionMenu.hidePopover(); confirmDelete(project)"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -273,6 +344,28 @@ import { AuthService } from '../auth/auth.service';
       background: #eef0ff;
       color: #4c51bf;
     }
+
+    .assigned-users {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      min-width: 8rem;
+    }
+
+    .assigned-user {
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: #e8eef7;
+      color: #334e68;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .status-badge.status-completed {
+      background: #e8eef7;
+      color: #334e68;
+    }
+
   `]
 })
 export class ProjectListComponent implements OnInit {
@@ -285,7 +378,10 @@ export class ProjectListComponent implements OnInit {
   readonly session = this.auth.session;
   readonly projects = signal<Project[]>([]);
   readonly stages = signal<Record<string, ProjectStage[]>>({});
+  readonly assignments = signal<Record<string, ProjectAssignment[]>>({});
   readonly stagesLoading = signal(false);
+  readonly assignmentsLoading = signal(false);
+  readonly assignmentsError = signal(false);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
@@ -295,12 +391,12 @@ export class ProjectListComponent implements OnInit {
   readonly stagesOf = signal<Project | null>(null);
 
   activeProjectsCount(): number {
-    return this.projects().filter(project => project.status === 'ACTIVE').length;
+    return this.projects().filter(project => this.projectStatus(project) === 'ACTIVE').length;
   }
 
   stagesInProgressCount(): number {
     return this.projects().filter(project => {
-      if (project.status !== 'ACTIVE') {
+      if (this.projectStatus(project) !== 'ACTIVE') {
         return false;
       }
       const stages = this.stagesFor(project.id);
@@ -311,7 +407,7 @@ export class ProjectListComponent implements OnInit {
 
   averageProgressPercentage(): number | null {
     const progressValues = this.projects()
-      .filter(project => project.status === 'ACTIVE')
+      .filter(project => this.projectStatus(project) === 'ACTIVE')
       .map(project => {
         const stages = this.stagesFor(project.id);
         const currentIndex = stages.findIndex(stage => stage.id === this.currentStageId(project.id));
@@ -373,9 +469,18 @@ export class ProjectListComponent implements OnInit {
     this.loadStages(this.projects());
   }
 
+  onAssignmentsClosed(): void {
+    this.assigning.set(null);
+    this.loadAssignments(this.projects());
+  }
+
   /** Etapas del proyecto, en el orden definido por el backend. */
   stagesFor(projectId: string): ProjectStage[] {
     return this.stages()[projectId] ?? [];
+  }
+
+  assignmentsFor(projectId: string): ProjectAssignment[] {
+    return this.assignments()[projectId] ?? [];
   }
 
   /**
@@ -396,6 +501,18 @@ export class ProjectListComponent implements OnInit {
     return stage ? `${stage.order}. ${stage.name}` : '—';
   }
 
+  projectStatus(project: Project): string {
+    if (project.status === 'COMPLETED') {
+      return project.status;
+    }
+
+    const currentStage = this.stagesFor(project.id)
+      .find(stage => stage.id === this.currentStageId(project.id));
+    return project.status === 'ACTIVE' && currentStage?.order === 6
+      ? 'COMPLETED'
+      : project.status;
+  }
+
   toggleStageOptions(event: MouseEvent): void {
     const trigger = event.currentTarget as HTMLButtonElement;
     const options = trigger.nextElementSibling as HTMLElement;
@@ -405,23 +522,42 @@ export class ProjectListComponent implements OnInit {
     }
 
     options.showPopover();
+    this.positionPopover(trigger, options, false);
+  }
+
+  toggleActionMenu(event: MouseEvent): void {
+    const trigger = event.currentTarget as HTMLButtonElement;
+    const menu = trigger.nextElementSibling as HTMLElement;
+    if (menu.matches(':popover-open')) {
+      menu.hidePopover();
+      return;
+    }
+
+    menu.showPopover();
+    this.positionPopover(trigger, menu, true);
+  }
+
+  private positionPopover(trigger: HTMLButtonElement, popover: HTMLElement, alignRight: boolean): void {
     const triggerBounds = trigger.getBoundingClientRect();
-    const optionsBounds = options.getBoundingClientRect();
+    const popoverBounds = popover.getBoundingClientRect();
     const gap = 6;
     const viewportPadding = 8;
     const belowTop = triggerBounds.bottom + gap;
-    const fitsBelow = belowTop + optionsBounds.height <= window.innerHeight - viewportPadding;
-    const fitsAbove = triggerBounds.top - optionsBounds.height - gap >= viewportPadding;
+    const fitsBelow = belowTop + popoverBounds.height <= window.innerHeight - viewportPadding;
+    const fitsAbove = triggerBounds.top - popoverBounds.height - gap >= viewportPadding;
     const top = fitsBelow || !fitsAbove
-      ? Math.min(belowTop, window.innerHeight - optionsBounds.height - viewportPadding)
-      : triggerBounds.top - optionsBounds.height - gap;
+      ? Math.min(belowTop, window.innerHeight - popoverBounds.height - viewportPadding)
+      : triggerBounds.top - popoverBounds.height - gap;
+    const preferredLeft = alignRight
+      ? triggerBounds.right - popoverBounds.width
+      : triggerBounds.left;
     const left = Math.min(
-      Math.max(viewportPadding, triggerBounds.left),
-      window.innerWidth - optionsBounds.width - viewportPadding
+      Math.max(viewportPadding, preferredLeft),
+      window.innerWidth - popoverBounds.width - viewportPadding
     );
 
-    options.style.top = `${Math.max(viewportPadding, top)}px`;
-    options.style.left = `${Math.max(viewportPadding, left)}px`;
+    popover.style.top = `${Math.max(viewportPadding, top)}px`;
+    popover.style.left = `${Math.max(viewportPadding, left)}px`;
   }
 
   @HostListener('document:click', ['$event'])
@@ -431,7 +567,7 @@ export class ProjectListComponent implements OnInit {
     }
     const target = event.target;
 
-    document.querySelectorAll<HTMLElement>('.stage-options:popover-open').forEach(options => {
+    document.querySelectorAll<HTMLElement>('.stage-options:popover-open, .action-menu:popover-open').forEach(options => {
       if (!options.parentElement?.contains(target)) {
         options.hidePopover();
       }
@@ -478,7 +614,13 @@ export class ProjectListComponent implements OnInit {
   }
 
   statusLabel(status: string): string {
-    return status === 'ACTIVE' ? 'Activo' : status;
+    if (status === 'ACTIVE') {
+      return 'Activo';
+    }
+    if (status === 'COMPLETED') {
+      return 'Completado';
+    }
+    return status;
   }
 
   logout(): void {
@@ -493,6 +635,7 @@ export class ProjectListComponent implements OnInit {
         this.projects.set(projects);
         this.loading.set(false);
         this.loadStages(projects);
+        this.loadAssignments(projects);
       },
       error: err => {
         this.loading.set(false);
@@ -523,6 +666,33 @@ export class ProjectListComponent implements OnInit {
       });
       this.stages.set(byProject);
       this.stagesLoading.set(false);
+    });
+  }
+
+  private loadAssignments(projects: Project[]): void {
+    if (!this.isAdmin || projects.length === 0) {
+      this.assignments.set({});
+      this.assignmentsLoading.set(false);
+      this.assignmentsError.set(false);
+      return;
+    }
+
+    this.assignmentsLoading.set(true);
+    this.assignmentsError.set(false);
+    forkJoin(projects.map(project => this.projectsService.listAssignments(project.id))).subscribe({
+      next: assignmentLists => {
+        const byProject: Record<string, ProjectAssignment[]> = {};
+        projects.forEach((project, index) => {
+          byProject[project.id] = assignmentLists[index] ?? [];
+        });
+        this.assignments.set(byProject);
+        this.assignmentsLoading.set(false);
+      },
+      error: err => {
+        this.assignmentsLoading.set(false);
+        this.assignmentsError.set(true);
+        this.error.set(projectErrorMessage(err));
+      }
     });
   }
 }

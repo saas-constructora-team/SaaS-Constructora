@@ -1,4 +1,6 @@
-/* You can add global styles to this file, and also import other style files */
+/* ==========================================================================
+   Tokens de color y estilos base del documento
+   ========================================================================== */
 
 :root {
   --color-primary: #5a67d8;
@@ -19,8 +21,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- Autenticación (login / recuperar contraseña) --- */
+/* ==========================================================================
+   Autenticación: estructura de login, registro y recuperación de contraseña
+   ========================================================================== */
 
+/* Centra la tarjeta de autenticación en la pantalla. */
 .auth-page {
   min-height: 100vh;
   display: flex;
@@ -29,6 +34,7 @@ body {
   padding: 1.5rem;
 }
 
+/* Superficie principal de los formularios de autenticación. */
 .auth-card {
   width: 100%;
   max-width: 400px;
@@ -39,6 +45,7 @@ body {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
+/* Marca, título y texto introductorio de autenticación. */
 .auth-brand {
   margin: 0 0 0.25rem;
   font-size: 0.75rem;
@@ -60,6 +67,7 @@ body {
   color: #52606d;
 }
 
+/* Campos, etiquetas, foco y mensajes de validación del formulario. */
 .auth-field {
   display: flex;
   flex-direction: column;
@@ -91,6 +99,7 @@ body {
   color: #b00020;
 }
 
+/* Alertas informativas de error y confirmación. */
 .auth-alert {
   padding: 0.7rem 0.85rem;
   border-radius: 6px;
@@ -110,6 +119,7 @@ body {
   color: #1c6b34;
 }
 
+/* Botón principal, enlaces y acciones secundarias de autenticación. */
 .auth-btn {
   width: 100%;
   padding: 0.75rem;
@@ -213,8 +223,11 @@ body {
   color: #52606d;
 }
 
-/* --- Proyectos --- */
+/* ==========================================================================
+   Vistas de datos: cabeceras, formularios, tablas y acciones compartidas
+   ========================================================================== */
 
+/* Contenedor y cabecera de las vistas de proyectos y usuarios. */
 .page-shell {
   max-width: 1120px;
   margin: 0 auto;
@@ -269,6 +282,7 @@ body {
   font-weight: 600;
 }
 
+/* Estilos base y variantes de botones en las vistas de datos. */
 .btn {
   padding: 0.55rem 0.9rem;
   border: 1px solid transparent;
@@ -316,6 +330,7 @@ body {
   background: #fff;
 }
 
+/* Mensajes de éxito y error para operaciones de datos. */
 .alert {
   padding: 0.7rem 0.85rem;
   border-radius: 6px;
@@ -334,6 +349,7 @@ body {
   color: #1c6b34;
 }
 
+/* Paneles y títulos de secciones con formularios o contenido relacionado. */
 .panel {
   background: #fff;
   border: 1px solid #e3e8ef;
@@ -361,6 +377,7 @@ body {
   color: #52606d;
 }
 
+/* Rejilla, etiquetas y controles de los formularios de datos. */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -403,6 +420,7 @@ body {
   color: #b00020;
 }
 
+/* Distribución de acciones al pie de un formulario. */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -416,6 +434,7 @@ body {
   color: #7b8794;
 }
 
+/* Estado vacío cuando una lista no tiene registros. */
 .empty-state {
   background: #fff;
   border: 1px dashed #cbd2d9;
@@ -424,6 +443,7 @@ body {
   text-align: center;
 }
 
+/* Tabla de datos: superficie, columnas, encabezados y celdas. */
 .table-card {
   background: #fff;
   border: 1px solid #e3e8ef;
@@ -462,6 +482,7 @@ body {
   font-weight: 600;
 }
 
+/* Badges de estado y rol en tablas y listados. */
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.5rem;
@@ -504,6 +525,7 @@ body {
   color: #4c51bf;
 }
 
+/* Tarjetas KPI de resumen y jerarquía de sus textos. */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -540,6 +562,7 @@ body {
   font-size: 0.75rem;
 }
 
+/* Acciones que aparecen dentro de cada fila de una tabla. */
 .actions-column {
   width: 1%;
   white-space: nowrap;
@@ -547,10 +570,80 @@ body {
 
 .row-actions {
   display: flex;
-  gap: 0.35rem;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
 }
 
+.row-actions-menu {
+  position: relative;
+}
+
+.more-actions-trigger {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.action-menu {
+  position: fixed;
+  inset: auto;
+  min-width: 9rem;
+  margin: 0;
+  padding: 0.35rem;
+  border: 1px solid #e3e8ef;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  color: #1f2933;
+}
+
+.action-menu:not(:popover-open) {
+  display: none;
+}
+
+.action-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+}
+
+.action-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #334e68;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.action-menu-item:hover,
+.action-menu-item:focus-visible {
+  outline: none;
+  background: #f1f3f5;
+}
+
+.action-menu-item.action-menu-danger {
+  color: #98140b;
+}
+
+.action-menu-item.action-menu-danger:hover,
+.action-menu-item.action-menu-danger:focus-visible {
+  background: #fdecea;
+}
+
+/* Filas, controles y metadatos de asignaciones de proyecto. */
 .assign-row {
   margin-bottom: 1rem;
 }
@@ -592,6 +685,7 @@ body {
   color: #7b8794;
 }
 
+/* Ajustes responsive para formularios, KPI y acciones de cabecera. */
 @media (max-width: 720px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -604,10 +698,14 @@ body {
   .topbar-actions {
     width: 100%;
   }
+
 }
 
-/* --- Aplicación autenticada --- */
+/* ==========================================================================
+   Aplicación autenticada: barra lateral, bienvenida y área de trabajo
+   ========================================================================== */
 
+/* Distribución general entre navegación lateral y contenido. */
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -616,6 +714,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Superficie fija de navegación lateral. */
 .app-sidebar {
   height: calc(100vh - 32px);
   min-height: 420px;
@@ -634,6 +733,7 @@ body {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
+/* Marca compacta que encabeza la barra lateral. */
 .brand-mark {
   width: 40px;
   height: 40px;
@@ -647,10 +747,12 @@ body {
   font-weight: 700;
 }
 
+/* Área que contiene el encabezado de bienvenida y la vista activa. */
 .workspace {
   min-width: 0;
 }
 
+/* Grupo vertical de accesos a las secciones de la aplicación. */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -658,6 +760,7 @@ body {
   gap: 10px;
 }
 
+/* Botones con icono de navegación y su estado activo. */
 .nav-tab {
   width: 44px;
   height: 44px;
@@ -697,6 +800,7 @@ body {
   background: #f1f3f5;
 }
 
+/* Acciones de pie de barra: cierre de sesión y avatar. */
 .sidebar-footer {
   display: flex;
   flex-direction: column;
@@ -735,6 +839,7 @@ body {
   cursor: default;
 }
 
+/* Encabezado de bienvenida y textos contextuales. */
 .welcome-header {
   min-height: 88px;
   padding: 18px 28px;
@@ -743,7 +848,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(241, 237, 233, 0.95);
   border-bottom: 1px solid #e3e8ef;
 }
 
@@ -760,6 +865,7 @@ body {
   font-size: 0.9rem;
 }
 
+/* Ancho, centrado y separación superior del contenido de cada vista. */
 .app-content {
   width: 100%;
   max-width: 1280px;
@@ -768,6 +874,7 @@ body {
   padding: 20px 28px 0;
 }
 
+/* Barra lateral y cabecera adaptadas a pantallas estrechas. */
 @media (max-width: 720px) {
   .app-shell {
     grid-template-columns: 1fr;
