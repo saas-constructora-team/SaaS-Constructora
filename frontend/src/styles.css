@@ -2,11 +2,11 @@
    Tokens de color y estilos base del documento
    ========================================================================== */
 
-:root {
+/*:root {
   --color-primary: #5a67d8;
   --color-primary-hover: #4c51bf;
   --color-danger: #98140b;
-/* --- Sistema visual base y autenticación --- */
+ --- Sistema visual base y autenticación --- */
 :root {
   --auth-navy: #172554;
   --auth-blue: #2563eb;
@@ -854,13 +854,13 @@ body {
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--auth-blue);
+  border-color: var(--auth-blue);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: var(--auth-blue-hover);
 }
 
 .btn-ghost {
@@ -961,7 +961,7 @@ body {
 
 .form-input:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: var(--auth-blue);
   box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.15);
 }
 
