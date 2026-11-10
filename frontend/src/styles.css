@@ -2,11 +2,7 @@
    Tokens de color y estilos base del documento
    ========================================================================== */
 
-/*:root {
-  --color-primary: #5a67d8;
-  --color-primary-hover: #4c51bf;
-  --color-danger: #98140b;
- --- Sistema visual base y autenticación --- */
+/*--- Sistema visual base y autenticación --- */
 :root {
   --auth-navy: #172554;
   --auth-blue: #2563eb;
