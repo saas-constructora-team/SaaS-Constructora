@@ -1,4 +1,6 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpInterceptorFn } from '@angular/common/http';
+
+export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
 
 const SESSION_KEY = 'constructora.session';
 
@@ -7,7 +9,7 @@ const SESSION_KEY = 'constructora.session';
  * El tenant lo deriva el servidor desde el token: no se envía X-Tenant-Id.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.startsWith('/api')) {
+  if (req.context.get(SKIP_AUTH) || !req.url.startsWith('/api')) {
     return next(req);
   }
 

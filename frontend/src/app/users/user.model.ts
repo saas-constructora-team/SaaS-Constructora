@@ -1,7 +1,3 @@
-export interface UserSummary {
-  id: string;
-  email: string;
-  fullName: string;
-  role: string;
-  active: boolean;
-}
+import { AuthorizationUserResponse } from '../core/authorization.model';
+
+export type UserSummary = AuthorizationUserResponse;
