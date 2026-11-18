@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import {
   ForgotPasswordRequest,
@@ -12,6 +12,9 @@ import {
   RegisterTenantResponse,
   ResetPasswordRequest
 } from './auth.model';
+
+import { AcceptInvitationRequest } from './invitation.model';
+import { SKIP_AUTH } from '../core/auth.interceptor';
 
 const SESSION_KEY = 'constructora.session';
 
@@ -48,6 +51,16 @@ export class AuthService {
 
   resetPassword(req: ResetPasswordRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.apiUrl}/reset-password`, req);
+  }
+
+  acceptInvitation(request: AcceptInvitationRequest): Observable<LoginResponse> {
+    const previousSession = this.session();
+    return this.http.post<LoginResponse>('/api/auth/invitations/accept', request,
+      { context: new HttpContext().set(SKIP_AUTH, true) }).pipe(tap(response => {
+        // Do not replace a newer session if the user changed accounts while waiting.
+        if (this.session() !== previousSession) throw new Error('Session changed during acceptance');
+        this.openSession(response);
+      }));
   }
 
   logout(): void {

@@ -1,24 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, effect } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { safeReturnUrl } from '../core/navigation.utils';
 import { AuthService } from './auth.service';
 import { LoginComponent } from './login.component';
 import { RegisterComponent } from './register.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
 import { ResetPasswordComponent } from './reset-password.component';
 
-type AuthView = 'login' | 'register' | 'forgot' | 'reset';
 
-/**
- * Contenedor de la autenticación: alterna entre login, creación de cuenta,
- * recuperación de contraseña y restablecimiento (este último se activa con
- * ?token=... del enlace enviado por correo, HU-13).
- */
+/** Public authentication layout; the route selects the existing form. */
 @Component({
   selector: 'app-auth',
   standalone: true,
   imports: [CommonModule, LoginComponent, RegisterComponent, ForgotPasswordComponent, ResetPasswordComponent],
   template: `
-    <div class="auth-layout" [class.auth-layout--register]="!auth.session() && view === 'register'">
+    <div class="auth-layout" [class.auth-layout--register]="view === 'register'">
       <aside class="auth-brand-panel" aria-label="SaaS Constructora">
         <div class="auth-brand-lockup">
           <span class="auth-brand-mark" aria-hidden="true">
@@ -54,29 +52,20 @@ type AuthView = 'login' | 'register' | 'forgot' | 'reset';
 
       <section class="auth-form-panel">
         <div class="auth-card" [class.auth-card--register]="view === 'register'">
-          @if (auth.session(); as session) {
-            <div class="auth-session">
-              <p class="auth-brand">SaaS Constructora</p>
-              <h1 class="auth-session-name">¡Hola, {{ session.user.fullName }}!</h1>
-              <p class="auth-meta">{{ session.user.email }} · Rol: {{ session.user.role }}</p>
-              <button class="auth-btn" type="button" (click)="logout()">Cerrar sesión</button>
-            </div>
-          } @else {
             @switch (view) {
               @case ('login') {
-                <app-login (forgot)="view = 'forgot'" (register)="view = 'register'"></app-login>
+                <app-login (forgot)="navigate('/recuperar-password')" (register)="navigate('/registro')"></app-login>
               }
               @case ('register') {
-                <app-register (back)="view = 'login'"></app-register>
+                <app-register (back)="navigate('/login')"></app-register>
               }
               @case ('forgot') {
-                <app-forgot-password (back)="view = 'login'"></app-forgot-password>
+                <app-forgot-password (back)="navigate('/login')"></app-forgot-password>
               }
               @case ('reset') {
                 <app-reset-password [token]="resetToken" (done)="onResetDone()"></app-reset-password>
               }
             }
-          }
         </div>
         <p class="auth-form-footer">© SaaS Constructora · Gestión profesional de proyectos</p>
       </section>
@@ -86,33 +75,27 @@ type AuthView = 'login' | 'register' | 'forgot' | 'reset';
 })
 export class AuthComponent {
   readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly data = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
+  private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
 
-  view: AuthView = 'login';
-  resetToken = '';
+  get view(): string { return this.data()['view'] as string; }
+  get resetToken(): string { return this.view === 'reset' ? this.query().get('token') ?? '' : ''; }
 
   constructor() {
-    const token = new URLSearchParams(window.location.search).get('token');
-    if (token) {
-      this.resetToken = token;
-      this.view = 'reset';
-    }
+    effect(() => {
+      if (this.auth.session() && (this.view === 'login' || this.view === 'register')) {
+        void this.router.navigateByUrl(safeReturnUrl(this.query().get('returnUrl')), { replaceUrl: true });
+      }
+    });
   }
 
-  logout(): void {
-    this.clearTokenParam();
-    this.view = 'login';
-    this.auth.logout();
+  navigate(path: string): void {
+    void this.router.navigate([path], { queryParams: { returnUrl: this.query().get('returnUrl') } });
   }
 
   onResetDone(): void {
-    this.clearTokenParam();
-    this.resetToken = '';
-    this.view = 'login';
-  }
-
-  private clearTokenParam(): void {
-    if (window.location.search) {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
+    void this.router.navigate(['/login'], { replaceUrl: true });
   }
 }

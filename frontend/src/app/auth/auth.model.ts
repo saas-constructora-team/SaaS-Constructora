@@ -59,6 +59,11 @@ export interface MessageResponse {
 /** HU-01: alta de una empresa (tenant) con su usuario administrador. */
 export interface RegisterTenantRequest {
   companyName: string;
+  tradeName?: string | null;
+  taxId?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
+  companyEmail?: string | null;
   adminFullName: string;
   adminEmail: string;
   adminPassword: string;

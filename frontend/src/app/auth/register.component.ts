@@ -37,33 +37,48 @@ import { AuthService, authErrorMessage } from './auth.service';
             <label class="auth-label" for="register-company">Razón social</label>
             <input class="auth-input" id="register-company" type="text" formControlName="companyName" autocomplete="organization" placeholder="Constructora Andes S.A.S.">
             @if (showError('companyName')) {
-              <span class="auth-field-error">{{ requiredError('La razón social') }}</span>
+              <span class="auth-field-error">{{ fieldError('companyName', 'La razón social') }}</span>
             }
           </div>
 
           <div class="auth-field">
             <label class="auth-label" for="register-trade-name">Nombre comercial</label>
             <input class="auth-input" id="register-trade-name" type="text" formControlName="tradeName" autocomplete="organization" placeholder="Andes Construcciones">
+            @if (showError('tradeName')) {
+              <span class="auth-field-error">{{ fieldError('tradeName', 'El nombre comercial') }}</span>
+            }
           </div>
 
           <div class="auth-field">
             <label class="auth-label" for="register-tax-id">NIT</label>
             <input class="auth-input" id="register-tax-id" type="text" inputmode="numeric" formControlName="taxId" placeholder="900123456-7">
+            @if (showError('taxId')) {
+              <span class="auth-field-error">{{ fieldError('taxId', 'El NIT') }}</span>
+            }
           </div>
 
           <div class="auth-field">
             <label class="auth-label" for="register-phone">Teléfono de contacto</label>
             <input class="auth-input" id="register-phone" type="tel" formControlName="contactPhone" autocomplete="tel" placeholder="(601) 555 0100">
+            @if (showError('contactPhone')) {
+              <span class="auth-field-error">{{ fieldError('contactPhone', 'El teléfono') }}</span>
+            }
           </div>
 
           <div class="auth-field auth-field--wide">
             <label class="auth-label" for="register-address">Dirección</label>
             <input class="auth-input" id="register-address" type="text" formControlName="address" autocomplete="street-address" placeholder="Dirección de la sede principal">
+            @if (showError('address')) {
+              <span class="auth-field-error">{{ fieldError('address', 'La dirección') }}</span>
+            }
           </div>
 
           <div class="auth-field auth-field--wide">
             <label class="auth-label" for="register-company-email">Correo corporativo</label>
             <input class="auth-input" id="register-company-email" type="email" formControlName="companyEmail" autocomplete="email" placeholder="contacto@constructora.com">
+            @if (showError('companyEmail')) {
+              <span class="auth-field-error">{{ fieldError('companyEmail', 'El correo corporativo') }}</span>
+            }
           </div>
         </div>
       </section>
@@ -82,7 +97,7 @@ import { AuthService, authErrorMessage } from './auth.service';
             <label class="auth-label" for="register-name">Nombre completo</label>
             <input class="auth-input" id="register-name" type="text" formControlName="adminFullName" autocomplete="name" placeholder="Ana Pérez">
             @if (showError('adminFullName')) {
-              <span class="auth-field-error">{{ requiredError('El nombre del administrador') }}</span>
+              <span class="auth-field-error">{{ fieldError('adminFullName', 'El nombre del administrador') }}</span>
             }
           </div>
 
@@ -105,8 +120,8 @@ import { AuthService, authErrorMessage } from './auth.service';
           <div class="auth-field">
             <label class="auth-label" for="register-confirm">Confirmar contraseña</label>
             <input class="auth-input" id="register-confirm" type="password" formControlName="confirmPassword" autocomplete="new-password" placeholder="Repite la contraseña">
-            @if (showError('confirmPassword')) {
-              <span class="auth-field-error">Las contraseñas no coinciden</span>
+            @if (showConfirmPasswordError()) {
+              <span class="auth-field-error">{{ form.controls.confirmPassword.hasError('required') ? 'Confirma la contraseña' : 'Las contraseñas no coinciden' }}</span>
             }
           </div>
         </div>
@@ -133,15 +148,15 @@ export class RegisterComponent {
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    companyName: ['', [Validators.required, Validators.maxLength(100)]],
-    tradeName: [''],
-    taxId: [''],
-    address: [''],
-    contactPhone: [''],
-    companyEmail: [''],
-    adminFullName: ['', [Validators.required, Validators.maxLength(150)]],
+    companyName: ['', [RegisterComponent.notBlank, Validators.maxLength(100)]],
+    tradeName: ['', Validators.maxLength(150)],
+    taxId: ['', [RegisterComponent.notBlank, Validators.maxLength(50)]],
+    address: ['', [RegisterComponent.notBlank, Validators.maxLength(255)]],
+    contactPhone: ['', Validators.maxLength(50)],
+    companyEmail: ['', [Validators.email, Validators.maxLength(255)]],
+    adminFullName: ['', [RegisterComponent.notBlank, Validators.maxLength(150)]],
     adminEmail: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
-    adminPassword: ['', [Validators.required, Validators.minLength(8)]],
+    adminPassword: ['', [Validators.required, Validators.minLength(8), Validators.pattern(/^(?=.*\p{L})(?=.*\p{N})(?=.*[\p{P}\p{S}]).*$/u)]],
     confirmPassword: ['', [Validators.required]]
   }, { validators: RegisterComponent.passwordsMatch });
 
@@ -150,20 +165,34 @@ export class RegisterComponent {
     return c.invalid && (c.touched || c.dirty);
   }
 
-  requiredError(label: string): string {
-    return `${label} es obligatorio`;
+  fieldError(control: keyof typeof this.form.controls, label: string): string {
+    const errors = this.form.controls[control].errors;
+    if (errors?.['required']) return `${label} es obligatorio`;
+    if (errors?.['maxlength']) return `${label} admite máximo ${errors['maxlength'].requiredLength} caracteres`;
+    return `${label} no tiene un formato válido`;
+  }
+
+  showConfirmPasswordError(): boolean {
+    const control = this.form.controls.confirmPassword;
+    return (control.touched || control.dirty)
+      && (control.invalid || this.form.hasError('passwordMismatch'));
+  }
+
+  private static notBlank(control: AbstractControl): ValidationErrors | null {
+    return typeof control.value === 'string' && control.value.trim() ? null : { required: true };
   }
 
   emailError(): string {
-    const email = this.form.controls.adminEmail;
-    return email.errors?.['required'] ? 'El email es obligatorio' : 'El email no tiene un formato válido';
+    return this.fieldError('adminEmail', 'El email');
   }
 
   adminPasswordError(): string {
     const password = this.form.controls.adminPassword;
     return password.errors?.['required']
       ? 'La contraseña es obligatoria'
-      : 'La contraseña debe tener al menos 8 caracteres';
+      : password.hasError('minlength')
+        ? 'La contraseña debe tener al menos 8 caracteres'
+        : 'La contraseña debe incluir letras, números y un símbolo';
   }
 
   onSubmit(): void {
@@ -171,10 +200,16 @@ export class RegisterComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { companyName, adminFullName, adminEmail, adminPassword } = this.form.getRawValue();
+    const { confirmPassword, ...values } = this.form.getRawValue();
+    const optional = (value: string): string | null => value.trim() || null;
     this.error.set(null);
     this.loading.set(true);
-    this.auth.register({ companyName, adminFullName, adminEmail, adminPassword }).subscribe({
+    this.auth.register({
+      ...values,
+      tradeName: optional(values.tradeName),
+      contactPhone: optional(values.contactPhone),
+      companyEmail: optional(values.companyEmail)
+    }).subscribe({
       next: () => this.loading.set(false),
       error: (err) => {
         this.loading.set(false);
