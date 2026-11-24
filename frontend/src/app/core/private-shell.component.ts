@@ -27,6 +27,17 @@ import { PermissionService } from './permission.service';
                   <rect x="14" y="14" width="6" height="6" rx="1.5" />
                 </svg>
               </a>
+              <a
+                class="nav-tab"
+                title="Bitácora"
+                aria-label="Bitácora"
+                routerLink="/app/bitacora" routerLinkActive="active" ariaCurrentWhenActive="page"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 3h10a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" />
+                  <path d="M7 3v18M10 8h6M10 12h6M10 16h4" />
+                </svg>
+              </a>
               @if (permissions.capabilities().administerUsers === 'granted') {
               <a
                 class="nav-tab"
@@ -77,6 +88,8 @@ import { PermissionService } from './permission.service';
               <p class="welcome-subtitle">
                 @if (router.url.startsWith('/app/usuarios')) {
                   Administra los usuarios de tu empresa.
+                } @else if (router.url.startsWith('/app/bitacora')) {
+                  Registra avances y novedades de tus proyectos.
                 } @else {
                   Consulta los proyectos y sus etapas.
                 }
