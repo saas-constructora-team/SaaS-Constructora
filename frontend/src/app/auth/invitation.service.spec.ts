@@ -36,7 +36,7 @@ describe('Invitation API and central session storage', () => {
     api.preview('token').subscribe();
     const call = http.expectOne('/api/auth/invitations/token');
     expect(call.request.headers.has('Authorization')).toBeFalse();
-    call.flush({ companyName: 'Company', email: request.email, expiresAt: '2027-01-01T12:00:00' });
+    call.flush({ companyName: 'Company', email: request.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: true });
   });
   it('accepts an existing account without an empty password and stores the returned session centrally', () => {
     auth.acceptInvitation({ token: 'token' }).subscribe();

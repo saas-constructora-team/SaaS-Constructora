@@ -24,6 +24,7 @@ export interface InvitationPreview {
   companyName: string;
   email: string;
   expiresAt: string;
+  requiresPassword: boolean;
 }
 export interface AcceptInvitationRequest {
   token: string;
