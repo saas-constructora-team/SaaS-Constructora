@@ -1,4 +1,4 @@
-/* AUTO-GENERADO por scripts/generate-env.mjs desde /home/santiago/Documentos/Universidad/Software como Servicio/SaaS-Constructora/frontend/.env.
+/* AUTO-GENERADO por scripts/generate-env.mjs desde C:\Users\ACER NITRO V16\Documents\SaaS-Constructora\.env.
  * No editar a mano: los cambios se sobreescriben en cada npm start/build/watch.
  */
 export const environment = {
