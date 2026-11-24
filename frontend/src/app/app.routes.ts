@@ -6,6 +6,7 @@ import { PrivateShellComponent } from './core/private-shell.component';
 import { NavigationMessageComponent } from './core/navigation-message.component';
 import { routeRole } from './core/route-role.resolver';
 import { ProjectListComponent } from './projects/project-list.component';
+import { SiteLogComponent } from './site-log/site-log.component';
 import { usersRoutes } from './users/users.routes';
 
 export const routes: Routes = [
@@ -22,6 +23,7 @@ export const routes: Routes = [
       // Replace this redirect when the independent dashboard is available.
       { path: 'dashboard', pathMatch: 'full', redirectTo: 'proyectos' },
       { path: 'proyectos', component: ProjectListComponent, resolve: { role: routeRole } },
+      { path: 'bitacora', component: SiteLogComponent },
       { path: 'usuarios', children: usersRoutes }
     ]
   },
