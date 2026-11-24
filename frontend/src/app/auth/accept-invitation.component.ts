@@ -21,9 +21,8 @@ import { InvitationPreview } from './invitation.model';
       <form [formGroup]="form" (ngSubmit)="accept()" novalidate [attr.aria-busy]="saving()">
         <fieldset [disabled]="saving() || accepted()">
           <legend>Tu cuenta</legend>
-          <label class="account-choice"><input type="radio" formControlName="account" value="new"> Necesito definir una contraseña</label>
-          <label class="account-choice"><input type="radio" formControlName="account" value="existing"> Ya tengo una cuenta activa</label>
-          @if (form.controls.account.value === 'new') {
+          @if (invitation.requiresPassword) {
+            <p class="muted">Esta invitación requiere que definas una contraseña para activar tu cuenta.</p>
             <div class="auth-field"><label class="form-label" for="invitation-password">Nueva contraseña</label>
               <input id="invitation-password" class="form-input" type="password" autocomplete="new-password" formControlName="password">
               @if (passwordInvalid()) { <span class="auth-field-error">La contraseña debe tener entre 8 y 100 caracteres.</span> }
@@ -32,7 +31,9 @@ import { InvitationPreview } from './invitation.model';
               <input id="invitation-confirm" class="form-input" type="password" autocomplete="new-password" formControlName="confirmPassword">
               @if (form.controls.confirmPassword.touched && passwordsDiffer()) { <span class="auth-field-error">Las contraseñas no coinciden.</span> }
             </div>
-          } @else { <p class="muted">Tu contraseña actual se conservará. No necesitas introducirla aquí.</p> }
+          } @else {
+            <p class="muted">Ya tienes una cuenta activa. Al aceptar la invitación, se conservará tu acceso actual y se activará tu membresía en esta empresa.</p>
+          }
           @if (auth.session()) {
             <p role="status">Hay una sesión abierta. Aceptar abrirá la cuenta invitada en {{ invitation.companyName }} y reemplazará la sesión actual.</p>
             <label class="account-choice"><input type="checkbox" formControlName="switchSession"> Entiendo que cambiará la sesión activa.</label>
@@ -64,7 +65,7 @@ export class AcceptInvitationComponent {
   readonly accepted = signal(false);
   readonly preview = signal<InvitationPreview | null>(null);
   readonly error = signal<string | null>(null);
-  readonly form = this.fb.nonNullable.group({ account: ['new'],
+  readonly form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(100)]],
     confirmPassword: [''], switchSession: [false] });
 
@@ -72,7 +73,7 @@ export class AcceptInvitationComponent {
     this.route.queryParamMap.pipe(map(params => params.get('token')?.trim() ?? ''), distinctUntilChanged(),
       switchMap(token => {
         this.token = token; this.saving.set(false); this.preview.set(null); this.error.set(null); this.accepted.set(false);
-        this.form.reset({ account: 'new', password: '', confirmPassword: '', switchSession: false });
+        this.form.reset({ password: '', confirmPassword: '', switchSession: false });
         this.loading.set(!!token);
         if (!token) { this.error.set('El enlace no contiene una invitación. Solicita uno nuevo.'); return of(null); }
         return this.api.preview(token).pipe(catchError(error => {
@@ -88,16 +89,17 @@ export class AcceptInvitationComponent {
   passwordInvalid(): boolean { const c = this.form.controls.password; return c.invalid && c.touched; }
 
   accept(): void {
-    if (!this.token || !this.preview() || this.loading() || this.saving() || this.accepted()) return;
+    const invitation = this.preview();
+    if (!this.token || !invitation || this.loading() || this.saving() || this.accepted()) return;
     this.form.markAllAsTouched();
     const values = this.form.getRawValue();
-    if (values.account === 'new' && (this.form.controls.password.invalid || this.passwordsDiffer())) return;
+    if (invitation.requiresPassword && (this.form.controls.password.invalid || this.passwordsDiffer())) return;
     if (this.auth.session() && !values.switchSession) {
       this.error.set('Confirma el cambio de sesión antes de continuar.'); return;
     }
     const token = this.token;
     this.saving.set(true); this.error.set(null);
-    this.auth.acceptInvitation({ token, ...(values.account === 'new' ? { password: values.password } : {}) })
+    this.auth.acceptInvitation({ token, ...(invitation.requiresPassword ? { password: values.password } : {}) })
       .pipe(takeUntil(this.route.queryParamMap.pipe(filter(params => (params.get('token')?.trim() ?? '') !== token))),
         finalize(() => this.saving.set(false)), takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
@@ -109,7 +111,7 @@ export class AcceptInvitationComponent {
           this.saving.set(false);
           if (this.token !== token) return;
           this.error.set(error.status === 400
-            ? 'No se pudo aceptar. Si tu cuenta es nueva, selecciona definir contraseña. Si el enlace venció o ya fue utilizado, solicita otro.'
+            ? 'No se pudo aceptar la invitación. Si el enlace venció o ya fue utilizado, solicita otro.'
             : error.status === 0 ? 'No se pudo conectar. Inténtalo nuevamente.' : 'No se pudo aceptar la invitación. Inténtalo de nuevo.');
         }
       });
