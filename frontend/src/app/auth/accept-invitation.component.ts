@@ -32,11 +32,7 @@ import { InvitationPreview } from './invitation.model';
               @if (form.controls.confirmPassword.touched && passwordsDiffer()) { <span class="auth-field-error">Las contraseñas no coinciden.</span> }
             </div>
           } @else {
-            <p class="muted">Ya tienes una cuenta activa. Al aceptar la invitación, se conservará tu acceso actual y se activará tu membresía en esta empresa.</p>
-          }
-          @if (auth.session()) {
-            <p role="status">Hay una sesión abierta. Aceptar abrirá la cuenta invitada en {{ invitation.companyName }} y reemplazará la sesión actual.</p>
-            <label class="account-choice"><input type="checkbox" formControlName="switchSession"> Entiendo que cambiará la sesión activa.</label>
+            <p class="muted">Ya tienes una cuenta activa. Al aceptar, se activará tu membresía en {{ invitation.companyName }}.</p>
           }
         </fieldset>
         <button class="btn btn-primary" type="submit" [disabled]="saving() || accepted()">{{ saving() ? 'Aceptando…' : 'Aceptar invitación' }}</button>
@@ -49,7 +45,7 @@ import { InvitationPreview } from './invitation.model';
     <p><a class="auth-link" routerLink="/login">Ir al inicio de sesión</a></p>
   </section></main>`,
   styles: [`.invitation-card { max-width: 640px; margin: 1rem auto; }
-    .account-choice { display: block; margin: 1rem 0; } fieldset { border: 0; padding: 0; min-width: 0; }
+    fieldset { border: 0; padding: 0; min-width: 0; }
     dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }`]
 })
 export class AcceptInvitationComponent {
@@ -67,13 +63,13 @@ export class AcceptInvitationComponent {
   readonly error = signal<string | null>(null);
   readonly form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(100)]],
-    confirmPassword: [''], switchSession: [false] });
+    confirmPassword: [''] });
 
   constructor() {
     this.route.queryParamMap.pipe(map(params => params.get('token')?.trim() ?? ''), distinctUntilChanged(),
       switchMap(token => {
         this.token = token; this.saving.set(false); this.preview.set(null); this.error.set(null); this.accepted.set(false);
-        this.form.reset({ password: '', confirmPassword: '', switchSession: false });
+        this.form.reset({ password: '', confirmPassword: '' });
         this.loading.set(!!token);
         if (!token) { this.error.set('El enlace no contiene una invitación. Solicita uno nuevo.'); return of(null); }
         return this.api.preview(token).pipe(catchError(error => {
@@ -94,9 +90,6 @@ export class AcceptInvitationComponent {
     this.form.markAllAsTouched();
     const values = this.form.getRawValue();
     if (invitation.requiresPassword && (this.form.controls.password.invalid || this.passwordsDiffer())) return;
-    if (this.auth.session() && !values.switchSession) {
-      this.error.set('Confirma el cambio de sesión antes de continuar.'); return;
-    }
     const token = this.token;
     this.saving.set(true); this.error.set(null);
     this.auth.acceptInvitation({ token, ...(invitation.requiresPassword ? { password: values.password } : {}) })

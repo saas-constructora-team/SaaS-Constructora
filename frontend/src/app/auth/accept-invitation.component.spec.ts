@@ -66,13 +66,13 @@ describe('AcceptInvitationComponent', () => {
     c.accept();
     expect(accept).toHaveBeenCalledOnceWith({ token: 'token' });
   });
-  it('requires explicit consent before replacing a previous company session', () => {
+  it('accepts an existing account even when another company session is open', () => {
     preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
     session.set({ ...result, accessToken: 'previous', user: { ...result.user, tenantId: 'previous-company' } });
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
     c.accept();
-    expect(accept).not.toHaveBeenCalled(); expect(c.error()).toContain('Confirma');
-    c.form.controls.switchSession.setValue(true); c.accept(); expect(accept).toHaveBeenCalled();
+    expect(accept).toHaveBeenCalledOnceWith({ token: 'token' });
+    expect(c.error()).toBeNull();
   });
   it('prevents duplicate acceptance requests', () => {
     preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
