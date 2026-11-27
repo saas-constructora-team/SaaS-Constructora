@@ -5,6 +5,7 @@ import {
   CreateProjectRequest,
   Project,
   ProjectAssignment,
+  ProjectProgress,
   ProjectStage,
   ProjectStageRequest,
   UpdateProjectRequest
@@ -67,6 +68,15 @@ export class ProjectService {
 
   deleteStage(projectId: string, stageId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${projectId}/stages/${stageId}`);
+  }
+
+  /** Etapa en curso compartida: se persiste en el backend, no en el navegador. */
+  getProgress(projectId: string): Observable<ProjectProgress> {
+    return this.http.get<ProjectProgress>(`${this.apiUrl}/${projectId}/progress`);
+  }
+
+  selectStage(projectId: string, stageId: string): Observable<ProjectProgress> {
+    return this.http.put<ProjectProgress>(`${this.apiUrl}/${projectId}/progress`, { stageId });
   }
 }
 

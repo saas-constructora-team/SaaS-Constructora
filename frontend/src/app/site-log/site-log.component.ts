@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../auth/auth.service';
-import { Project, ProjectAssignment } from '../projects/project.model';
+import { RealtimeService } from '../core/realtime.service';
+import { Project, ProjectAssignment, ProjectChangeEvent } from '../projects/project.model';
 import { ProjectService, projectErrorMessage } from '../projects/project.service';
-import { SiteLogEntry, SiteLogStatus, SiteLogType } from './site-log.model';
+import { SiteLogEntry, SiteLogRecordRequest, SiteLogStatus, SiteLogType } from './site-log.model';
+import { SiteLogService, siteLogErrorMessage } from './site-log.service';
 
 @Component({
   selector: 'app-site-log',
@@ -29,6 +31,10 @@ import { SiteLogEntry, SiteLogStatus, SiteLogType } from './site-log.model';
 
       @if (notice()) {
         <div class="alert alert-success" role="status">{{ notice() }}</div>
+      }
+
+      @if (loading()) {
+        <p class="muted" role="status">Cargando bitácora…</p>
       }
 
       <section class="project-toolbar" aria-label="Controles de la bitácora">
@@ -148,7 +154,7 @@ import { SiteLogEntry, SiteLogStatus, SiteLogType } from './site-log.model';
 
             <div class="entry-form-actions">
               <button class="btn btn-ghost" type="button" (click)="closeForm()">Cancelar</button>
-              <button class="btn btn-primary" type="submit" [disabled]="entryForm.invalid">Guardar entrada</button>
+              <button class="btn btn-primary" type="submit" [disabled]="entryForm.invalid || saving()">Guardar entrada</button>
             </div>
           </form>
         </section>
@@ -312,9 +318,12 @@ import { SiteLogEntry, SiteLogStatus, SiteLogType } from './site-log.model';
     @media (max-width: 600px) { .form-grid, .entry-details { grid-template-columns: 1fr; } .wide-field { grid-column: auto; } .timeline-card header { align-items:flex-start; gap:.5rem; } }
   `]
 })
-export class SiteLogComponent implements OnInit {
+export class SiteLogComponent implements OnInit, OnDestroy {
   private readonly projectsService = inject(ProjectService);
+  private readonly siteLogService = inject(SiteLogService);
   private readonly auth = inject(AuthService);
+  private readonly realtime = inject(RealtimeService);
+  private stopRealtime: (() => void) | null = null;
 
   readonly projects = signal<Project[]>([]);
   readonly selectedProjectId = signal('');
@@ -323,7 +332,9 @@ export class SiteLogComponent implements OnInit {
   readonly formOpen = signal(false);
   readonly error = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
-  readonly entries = signal<SiteLogEntry[]>(this.seedEntries());
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly entries = signal<SiteLogEntry[]>([]);
   readonly editingId = signal<string | null>(null);
   readonly assignments = signal<ProjectAssignment[]>([]);
 
@@ -342,13 +353,46 @@ export class SiteLogComponent implements OnInit {
     this.projectsService.list().subscribe({
       next: projects => {
         this.projects.set(projects);
-        if (projects.length > 0) {
-          this.selectedProjectId.set(projects[0].id);
-          this.loadAssignments(projects[0].id, true);
+        const firstProjectId = projects[0]?.id ?? '';
+        this.selectedProjectId.set(firstProjectId);
+        if (firstProjectId) {
+          this.loadAssignments(firstProjectId, true);
         }
+        this.loadEntries(firstProjectId);
+        this.subscribeToProject(firstProjectId);
       },
       error: err => this.error.set(projectErrorMessage(err))
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopRealtime?.();
+    this.stopRealtime = null;
+  }
+
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    const projectId = this.selectedProjectId();
+    if (projectId) {
+      this.loadEntries(projectId);
+    }
+  }
+
+  private subscribeToProject(projectId: string): void {
+    this.stopRealtime?.();
+    this.stopRealtime = projectId
+      ? this.realtime.changes(event => this.onProjectChanged(event), projectId)
+      : null;
+  }
+
+  private onProjectChanged(event: ProjectChangeEvent): void {
+    if (event.projectId === this.selectedProjectId()
+        && (event.section === 'SITE_LOG' || event.section === 'DOCUMENT')) {
+      this.loadEntries(this.selectedProjectId());
+      if (event.section === 'SITE_LOG') {
+        this.loadAssignments(this.selectedProjectId(), false);
+      }
+    }
   }
 
   openForm(): void {
@@ -376,56 +420,47 @@ export class SiteLogComponent implements OnInit {
   }
 
   saveEntry(): void {
-    if (this.entryForm.invalid) return;
+    if (this.entryForm.invalid || this.saving()) return;
     const value = this.entryForm.getRawValue();
-    const project = this.projects().find(item => item.id === this.selectedProjectId());
-    const assignee = this.assignments().find(item => item.userId === value.assigneeId);
-    const assigneeName = assignee?.userFullName ?? assignee?.userEmail ?? null;
-    const editingId = this.editingId();
-    if (editingId) {
-      this.entries.update(items => items.map(item => item.id === editingId
-        ? {
-            ...item,
-            projectId: project?.id ?? item.projectId,
-            projectName: project?.name ?? item.projectName,
-            type: value.type,
-            status: value.status,
-            what: value.what.trim(),
-            how: value.how.trim(),
-            when: value.when,
-            where: value.where.trim(),
-            why: value.why.trim(),
-            assigneeId: assignee?.userId ?? null,
-            assigneeName
-          }
-        : item
-      ));
-      this.persist();
-      this.notice.set('Entrada actualizada correctamente.');
-      this.closeForm();
+    const projectId = this.selectedProjectId();
+    if (!projectId) {
+      this.error.set('Selecciona un proyecto para guardar la entrada.');
       return;
     }
-    const entry: SiteLogEntry = {
-      id: crypto.randomUUID(),
-      projectId: project?.id ?? '',
-      projectName: project?.name ?? 'Proyecto',
+
+    const req: SiteLogRecordRequest = {
       type: value.type,
       status: value.status,
-      what: value.what.trim(),
-      how: value.how.trim(),
       when: value.when,
       where: value.where.trim(),
-      why: value.why.trim(),
-      author: this.auth.session()?.user.fullName ?? 'Usuario',
-      assigneeId: assignee?.userId ?? null,
-      assigneeName,
-      createdAt: new Date().toISOString(),
-      photos: 0
+      what: value.what.trim(),
+      how: value.how.trim(),
+      why: value.why.trim() || null,
+      assigneeId: value.assigneeId || null
     };
-    this.entries.update(items => [entry, ...items]);
-    this.persist();
-    this.notice.set('Entrada agregada correctamente a la bitácora.');
-    this.closeForm();
+    const editingId = this.editingId();
+    this.saving.set(true);
+    this.error.set(null);
+    const request$ = editingId
+      ? this.siteLogService.update(projectId, editingId, req)
+      : this.siteLogService.create(projectId, req);
+
+    request$.subscribe({
+      next: entry => {
+        this.saving.set(false);
+        this.entries.update(items => editingId
+          ? items.map(item => item.id === editingId ? entry : item)
+          : [entry, ...items]);
+        this.notice.set(editingId
+          ? 'Entrada actualizada correctamente.'
+          : 'Entrada agregada correctamente a la bitácora.');
+        this.closeForm();
+      },
+      error: err => {
+        this.saving.set(false);
+        this.error.set(siteLogErrorMessage(err));
+      }
+    });
   }
 
   editEntry(entry: SiteLogEntry): void {
@@ -439,35 +474,46 @@ export class SiteLogComponent implements OnInit {
     this.entryForm.reset({
       type: entry.type,
       status: entry.status,
-      when: entry.when,
+      when: entry.when.slice(0, 16),
       where: entry.where,
       what: entry.what,
       how: entry.how,
-      why: entry.why,
+      why: entry.why ?? '',
       assigneeId: entry.assigneeId ?? ''
     });
     this.formOpen.set(true);
   }
 
   refreshEntry(entry: SiteLogEntry): void {
-    this.entries.update(items => items.map(item => item.id === entry.id
-      ? { ...item, createdAt: new Date().toISOString() }
-      : item
-    ));
-    this.persist();
-    this.notice.set('Entrada actualizada con la fecha de modificación.');
+    const projectId = entry.projectId || this.selectedProjectId();
+    if (!projectId) return;
+    this.notice.set(null);
+    this.siteLogService.touch(projectId, entry.id).subscribe({
+      next: updated => {
+        this.entries.update(items => items.map(item => item.id === updated.id ? updated : item));
+        this.notice.set('Entrada actualizada con la fecha de modificación.');
+      },
+      error: err => this.error.set(siteLogErrorMessage(err))
+    });
   }
 
   deleteEntry(entry: SiteLogEntry): void {
     if (!window.confirm(`¿Eliminar la entrada "${entry.what}"? Esta acción no se puede deshacer.`)) {
       return;
     }
-    this.entries.update(items => items.filter(item => item.id !== entry.id));
-    this.persist();
-    if (this.editingId() === entry.id) {
-      this.closeForm();
-    }
-    this.notice.set('Entrada eliminada correctamente.');
+    const projectId = entry.projectId || this.selectedProjectId();
+    if (!projectId) return;
+    this.notice.set(null);
+    this.siteLogService.remove(projectId, entry.id).subscribe({
+      next: () => {
+        this.entries.update(items => items.filter(item => item.id !== entry.id));
+        if (this.editingId() === entry.id) {
+          this.closeForm();
+        }
+        this.notice.set('Entrada eliminada correctamente.');
+      },
+      error: err => this.error.set(siteLogErrorMessage(err))
+    });
   }
 
   changeProject(event: Event): void {
@@ -475,6 +521,8 @@ export class SiteLogComponent implements OnInit {
     this.selectedProjectId.set(projectId);
     this.entryForm.patchValue({ assigneeId: '' });
     this.loadAssignments(projectId, false);
+    this.loadEntries(projectId);
+    this.subscribeToProject(projectId);
   }
 
   searchInput(event: Event): string {
@@ -570,30 +618,28 @@ export class SiteLogComponent implements OnInit {
     });
   }
 
-  private persist(): void {
-    localStorage.setItem('saas-constructora-site-log', JSON.stringify(this.entries()));
+  private loadEntries(projectId: string): void {
+    if (!projectId) {
+      this.entries.set([]);
+      return;
+    }
+    this.loading.set(true);
+    this.error.set(null);
+    this.siteLogService.list(projectId).subscribe({
+      next: entries => {
+        this.loading.set(false);
+        this.entries.set(entries);
+      },
+      error: err => {
+        this.loading.set(false);
+        this.error.set(siteLogErrorMessage(err));
+      }
+    });
   }
 
   private localDateTime(): string {
     const now = new Date();
     const offset = now.getTimezoneOffset();
     return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 16);
-  }
-
-  private seedEntries(): SiteLogEntry[] {
-    const saved = localStorage.getItem('saas-constructora-site-log');
-    if (saved) {
-      try {
-        const entries = JSON.parse(saved) as SiteLogEntry[];
-        const realEntries = entries.filter(entry => !entry.id.startsWith('seed-'));
-        if (realEntries.length !== entries.length) {
-          localStorage.setItem('saas-constructora-site-log', JSON.stringify(realEntries));
-        }
-        return realEntries;
-      } catch {
-        localStorage.removeItem('saas-constructora-site-log');
-      }
-    }
-    return [];
   }
 }

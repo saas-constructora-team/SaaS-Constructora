@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
-import { ProjectStageProgressService } from './project-stage-progress.service';
+import { RealtimeService } from '../core/realtime.service';
 import { Project, ProjectAssignment, ProjectStage } from './project.model';
 import { ProjectService } from './project.service';
 import { ProjectListComponent } from './project-list.component';
@@ -11,7 +11,7 @@ import { UserService } from '../users/user.service';
 describe('ProjectListComponent', () => {
   let fixture: ComponentFixture<ProjectListComponent>;
   let projectService: jasmine.SpyObj<ProjectService>;
-  let stageProgress: jasmine.SpyObj<ProjectStageProgressService>;
+  let realtime: jasmine.SpyObj<RealtimeService>;
   let userService: jasmine.SpyObj<UserService>;
 
   const activeFirst: Project = {
@@ -37,10 +37,13 @@ describe('ProjectListComponent', () => {
     hasPreviousPlans: false,
     hasSitePhotos: false,
     status: 'ACTIVE',
-    createdAt: '2026-01-01T00:00:00Z'
+    createdAt: '2026-01-01T00:00:00Z',
+    currentStageId: 'stage-2'
   };
 
-  const activeFinal: Project = { ...activeFirst, id: 'active-final', name: 'Proyecto Dos' };
+  const activeFinal: Project = {
+    ...activeFirst, id: 'active-final', name: 'Proyecto Dos', currentStageId: 'stage-6'
+  };
   const completed: Project = { ...activeFirst, id: 'completed', status: 'COMPLETED' };
 
   const stages: ProjectStage[] = [
@@ -65,12 +68,10 @@ describe('ProjectListComponent', () => {
   beforeEach(async () => {
     projectService = jasmine.createSpyObj<ProjectService>(
       'ProjectService',
-      ['list', 'listStages', 'listAssignments']
+      ['list', 'listStages', 'listAssignments', 'selectStage']
     );
-    stageProgress = jasmine.createSpyObj<ProjectStageProgressService>(
-      'ProjectStageProgressService',
-      ['stageId', 'select', 'clear']
-    );
+    realtime = jasmine.createSpyObj<RealtimeService>('RealtimeService', ['changes']);
+    realtime.changes.and.returnValue(() => {});
     userService = jasmine.createSpyObj<UserService>('UserService', ['list']);
     projectService.list.and.returnValue(of([activeFirst, activeFinal, completed]));
     projectService.listStages.and.callFake(projectId =>
@@ -80,9 +81,13 @@ describe('ProjectListComponent', () => {
       of(projectId === activeFirst.id ? [assignment] : [])
     );
     userService.list.and.returnValue(of([]));
-    stageProgress.stageId.and.callFake(projectId =>
-      projectId === activeFirst.id ? 'stage-2' : projectId === activeFinal.id ? 'stage-6' : null
-    );
+    projectService.selectStage.and.returnValue(of({
+      projectId: activeFirst.id,
+      currentStageId: 'stage-1',
+      version: 1,
+      updatedAt: null,
+      updatedBy: null
+    }));
 
     const auth = {
       session: signal({
@@ -98,7 +103,7 @@ describe('ProjectListComponent', () => {
       imports: [ProjectListComponent],
       providers: [
         { provide: ProjectService, useValue: projectService },
-        { provide: ProjectStageProgressService, useValue: stageProgress },
+        { provide: RealtimeService, useValue: realtime },
         { provide: UserService, useValue: userService },
         { provide: AuthService, useValue: auth }
       ]
@@ -207,7 +212,7 @@ describe('ProjectListComponent', () => {
     options[0].click();
     fixture.detectChanges();
 
-    expect(stageProgress.select).toHaveBeenCalledWith(activeFirst.id, 'stage-1');
+    expect(projectService.selectStage).toHaveBeenCalledWith(activeFirst.id, 'stage-1');
     expect(fixture.componentInstance.notice()).toContain('Diseño');
   });
 });

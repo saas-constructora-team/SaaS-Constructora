@@ -9,7 +9,8 @@ import { PermissionService } from '../core/permission.service';
 import { LoginResponse } from '../auth/auth.model';
 import { AuthService } from '../auth/auth.service';
 
-type PermissionAction = 'promote' | 'demote' | 'grantPersonnel' | 'revokePersonnel';
+type PermissionAction = 'promote' | 'demote' | 'grantPersonnel' | 'revokePersonnel'
+  | 'grantSiteLog' | 'revokeSiteLog';
 
 @Component({
   selector: 'app-user-management',
@@ -73,6 +74,7 @@ type PermissionAction = 'promote' | 'demote' | 'grantPersonnel' | 'revokePersonn
                 <th>Rol</th>
                 <th>Activo</th>
                 <th scope="col">Gestión de personal</th>
+                <th scope="col">Gestión de bitácora</th>
                 <th scope="col">Acciones</th>
               </tr>
             </thead>
@@ -102,6 +104,14 @@ type PermissionAction = 'promote' | 'demote' | 'grantPersonnel' | 'revokePersonn
                     }
                   </td>
                   <td>
+                    <span class="permission-tag">
+                      {{ user.canManageSiteLog === true ? 'Permitida' : user.canManageSiteLog === false ? 'No permitida' : 'No determinada' }}
+                    </span>
+                    @if (user.role === 'ADMIN') {
+                      <p class="muted">Incluida en el rol ADMIN.</p>
+                    }
+                  </td>
+                  <td>
                     @if (canManagePermissions()) {
                       <div class="user-permission-actions" [attr.aria-label]="'Permisos de ' + user.fullName">
                         <button class="btn btn-ghost" type="button" [disabled]="saving() || !user.active"
@@ -112,6 +122,12 @@ type PermissionAction = 'promote' | 'demote' | 'grantPersonnel' | 'revokePersonn
                           <button class="btn btn-ghost" type="button" [disabled]="saving() || !user.active"
                             (click)="changePermission(user, user.canCreatePersonnel ? 'revokePersonnel' : 'grantPersonnel')">
                             {{ user.canCreatePersonnel ? 'Revocar gestión de personal' : 'Permitir gestión de personal' }}
+                          </button>
+                        }
+                        @if (user.role !== 'ADMIN' && user.canManageSiteLog !== undefined) {
+                          <button class="btn btn-ghost" type="button" [disabled]="saving() || !user.active"
+                            (click)="changePermission(user, user.canManageSiteLog ? 'revokeSiteLog' : 'grantSiteLog')">
+                            {{ user.canManageSiteLog ? 'Revocar gestión de bitácora' : 'Permitir gestión de bitácora' }}
                           </button>
                         }
                       </div>
@@ -170,13 +186,17 @@ export class UserManagementComponent implements OnInit {
     if ((action === 'promote' && current.role === 'ADMIN')
       || (action === 'demote' && current.role !== 'ADMIN')
       || ((action === 'grantPersonnel' || action === 'revokePersonnel')
-        && (current.role === 'ADMIN' || typeof current.canCreatePersonnel !== 'boolean'))) return;
+        && (current.role === 'ADMIN' || typeof current.canCreatePersonnel !== 'boolean'))
+      || ((action === 'grantSiteLog' || action === 'revokeSiteLog')
+        && (current.role === 'ADMIN' || typeof current.canManageSiteLog !== 'boolean'))) return;
 
     const descriptions: Record<PermissionAction, string> = {
       promote: 'convertir en ADMIN, con acceso a la administración de la constructora, a',
       demote: 'cambiar a MEMBER, retirando el rol de administrador, a',
       grantPersonnel: 'permitir gestionar personal a',
-      revokePersonnel: 'revocar la gestión de personal de'
+      revokePersonnel: 'revocar la gestión de personal de',
+      grantSiteLog: 'permitir gestionar la bitácora a',
+      revokeSiteLog: 'revocar la gestión de la bitácora de'
     };
     const selfDemotion = action === 'demote' && current.id === session.user.id;
     if (!window.confirm(`¿Deseas ${descriptions[action]} ${current.fullName}?`
@@ -190,7 +210,9 @@ export class UserManagementComponent implements OnInit {
       promote: () => this.userService.enablePermissions(current.id),
       demote: () => this.userService.disablePermissions(current.id),
       grantPersonnel: () => this.userService.enablePersonnelCreation(current.id),
-      revokePersonnel: () => this.userService.disablePersonnelCreation(current.id)
+      revokePersonnel: () => this.userService.disablePersonnelCreation(current.id),
+      grantSiteLog: () => this.userService.enableSiteLogManagement(current.id),
+      revokeSiteLog: () => this.userService.disableSiteLogManagement(current.id)
     };
     requests[action]().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: updated => {
@@ -198,8 +220,9 @@ export class UserManagementComponent implements OnInit {
         if (this.auth.session() !== session) return;
         this.snapshot.set({ session, users: this.users().map(item => item.id === updated.id ? updated : item) });
         if (updated.id === session.user.id) {
-          this.permissions.receivePersonnelPermissions({ tenantId: session.user.tenantId,
-            accessToken: session.accessToken }, updated);
+          const scope = { tenantId: session.user.tenantId, accessToken: session.accessToken };
+          this.permissions.receivePersonnelPermissions(scope, updated);
+          this.permissions.receiveSiteLogPermissions(scope, updated);
         }
         this.notice.set('Permisos actualizados. Los cambios de rol se reflejarán al iniciar una nueva sesión.');
         if (selfDemotion) this.auth.logout();
@@ -222,8 +245,11 @@ export class UserManagementComponent implements OnInit {
         if (this.auth.session() !== session) return;
         this.snapshot.set({ session, users });
         const current = users.find(user => user.id === session.user.id);
-        if (current) this.permissions.receivePersonnelPermissions({ tenantId: session.user.tenantId,
-          accessToken: session.accessToken }, current);
+        if (current) {
+          const scope = { tenantId: session.user.tenantId, accessToken: session.accessToken };
+          this.permissions.receivePersonnelPermissions(scope, current);
+          this.permissions.receiveSiteLogPermissions(scope, current);
+        }
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);

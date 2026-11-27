@@ -9,9 +9,9 @@ import { LoginResponse } from '../auth/auth.model';
 import { UserSummary } from './user.model';
 
 const admin: UserSummary = { id: '1', email: 'admin@example.com', fullName: 'Admin User',
-  role: 'ADMIN', active: true, canCreatePersonnel: true };
+  role: 'ADMIN', active: true, canCreatePersonnel: true, canManageSiteLog: true };
 const member: UserSummary = { id: '2', email: 'member@example.com', fullName: 'Member User',
-  role: 'MEMBER', active: true, canCreatePersonnel: false };
+  role: 'MEMBER', active: true, canCreatePersonnel: false, canManageSiteLog: false };
 const initialSession: LoginResponse = { accessToken: 'token', tokenType: 'Bearer', expiresInSeconds: 3600,
   user: { ...admin, tenantId: 'tenant' } };
 
@@ -27,12 +27,17 @@ describe('UserManagementComponent', () => {
     session = signal<LoginResponse | null>(initialSession);
     logout = jasmine.createSpy('logout').and.callFake(() => session.set(null));
     api = jasmine.createSpyObj<UserService>('UserService', ['list', 'enablePermissions',
-      'disablePermissions', 'enablePersonnelCreation', 'disablePersonnelCreation']);
+      'disablePermissions', 'enablePersonnelCreation', 'disablePersonnelCreation',
+      'enableSiteLogManagement', 'disableSiteLogManagement']);
     api.list.and.returnValue(of([admin, member]));
-    api.enablePermissions.and.returnValue(of({ ...member, role: 'ADMIN', canCreatePersonnel: true }));
-    api.disablePermissions.and.returnValue(of({ ...admin, role: 'MEMBER', canCreatePersonnel: false }));
+    api.enablePermissions.and.returnValue(of({ ...member, role: 'ADMIN', canCreatePersonnel: true,
+      canManageSiteLog: true }));
+    api.disablePermissions.and.returnValue(of({ ...admin, role: 'MEMBER', canCreatePersonnel: false,
+      canManageSiteLog: false }));
     api.enablePersonnelCreation.and.returnValue(of({ ...member, canCreatePersonnel: true }));
     api.disablePersonnelCreation.and.returnValue(of(member));
+    api.enableSiteLogManagement.and.returnValue(of({ ...member, canManageSiteLog: true }));
+    api.disableSiteLogManagement.and.returnValue(of(member));
     confirm = spyOn(window, 'confirm').and.returnValue(true);
     TestBed.configureTestingModule({ imports: [UserManagementComponent], providers: [
       { provide: UserService, useValue: api }, { provide: AuthService, useValue: { session, logout } }
@@ -117,6 +122,29 @@ describe('UserManagementComponent', () => {
     component.changePermission(allowed, 'revokePersonnel');
     expect(api.disablePersonnelCreation).toHaveBeenCalledOnceWith('2');
     expect(component.users()[1].canCreatePersonnel).toBeFalse();
+  });
+
+  it('grants site-log management', () => {
+    fixture.detectChanges();
+    component.changePermission(member, 'grantSiteLog');
+    expect(api.enableSiteLogManagement).toHaveBeenCalledOnceWith('2');
+    expect(component.users()[1].canManageSiteLog).toBeTrue();
+  });
+
+  it('revokes site-log management using the returned effective capability', () => {
+    const allowed = { ...member, canManageSiteLog: true };
+    api.list.and.returnValue(of([admin, allowed]));
+    fixture.detectChanges();
+    component.changePermission(allowed, 'revokeSiteLog');
+    expect(api.disableSiteLogManagement).toHaveBeenCalledOnceWith('2');
+    expect(component.users()[1].canManageSiteLog).toBeFalse();
+  });
+
+  it('does not offer an ineffective site-log revocation for ADMIN', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr')[0].querySelectorAll('button').length).toBe(1);
+    component.changePermission(admin, 'revokeSiteLog');
+    expect(api.disableSiteLogManagement).not.toHaveBeenCalled();
   });
 
   it('does not offer an ineffective personnel revocation for ADMIN', () => {

@@ -27,4 +27,12 @@ export class UserService {
   disablePersonnelCreation(userId: string): Observable<UserSummary> {
     return this.http.post<UserSummary>(`${this.apiUrl}/${encodeURIComponent(userId)}/personnel-creation/disable`, null);
   }
+
+  enableSiteLogManagement(userId: string): Observable<UserSummary> {
+    return this.http.post<UserSummary>(`${this.apiUrl}/${encodeURIComponent(userId)}/site-log-management/enable`, null);
+  }
+
+  disableSiteLogManagement(userId: string): Observable<UserSummary> {
+    return this.http.post<UserSummary>(`${this.apiUrl}/${encodeURIComponent(userId)}/site-log-management/disable`, null);
+  }
 }
