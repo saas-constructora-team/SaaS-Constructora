@@ -872,9 +872,12 @@ export class TaskBoardComponent implements OnInit, OnDestroy {
         tasks: []
       });
     }
-    columns.push({ ...this.emptyColumn });
-
-    const noStage = columns[columns.length - 1];
+    const noStage: BoardColumn = {
+      ...this.emptyColumn,
+      stages: [],
+      tasks: []
+    };
+    columns.push(noStage);
     const term = this.search().trim().toLowerCase();
     for (const task of current.tasks) {
       if (term && !task.title.toLowerCase().includes(term)

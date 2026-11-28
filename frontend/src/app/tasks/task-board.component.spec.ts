@@ -27,13 +27,18 @@ describe('TaskBoardComponent', () => {
     occurredAt: '2026-11-27T10:00:00'
   });
 
-  const task = (id: string, title: string, stageId: string | null): Task => ({
+  const task = (
+    id: string,
+    title: string,
+    stageId: string | null,
+    statusName = 'Pendiente'
+  ): Task => ({
     id,
     projectId: 'project-1',
     title,
     description: null,
     status: {
-      id: 'status-1', name: 'Pendiente', color: '#EF4444', order: 1,
+      id: 'status-1', name: statusName, color: '#EF4444', order: 1,
       isDefault: true, isSystem: false
     },
     area: null,
@@ -103,9 +108,9 @@ describe('TaskBoardComponent', () => {
   });
 
   it('translates the status name into a Sage tone', () => {
-    expect(component.statusTone(task('x', 'Hecho', null))).toBe('positive');
-    expect(component.statusTone(task('x', 'En curso', null))).toBe('progress');
-    expect(component.statusTone(task('x', 'Otro', null))).toBe('neutral');
+    expect(component.statusTone(task('x', 'Hecho', null, 'Hecho'))).toBe('positive');
+    expect(component.statusTone(task('x', 'En curso', null, 'En curso'))).toBe('progress');
+    expect(component.statusTone(task('x', 'Otro', null, 'Otro'))).toBe('neutral');
   });
 
   it('requests only the selected project when the filter changes', () => {

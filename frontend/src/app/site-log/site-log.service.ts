@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { SiteLogEntry, SiteLogRecordRequest } from './site-log.model';
 
 @Injectable({ providedIn: 'root' })
@@ -24,7 +24,9 @@ export class SiteLogService {
   }
 
   remove(projectId: string, entryId: string): Observable<void> {
-    return this.http.delete<void>(`/api/projects/${projectId}/site-log/${entryId}`);
+    return this.http
+      .delete<void>(`/api/projects/${projectId}/site-log/${entryId}`)
+      .pipe(map(() => undefined));
   }
 }
 
