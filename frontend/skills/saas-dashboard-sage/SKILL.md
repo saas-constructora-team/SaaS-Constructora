@@ -1,15 +1,15 @@
 ---
 name: saas-dashboard-sage
-description: Diseña e implementa pantallas y componentes UX/UI para aplicaciones web SaaS en Angular siguiendo el sistema de diseño Sage (fondo cálido, superficies blancas, navegación oscura y acentos salvia). Úsala al crear o modificar dashboards, tarjetas KPI, gráficos, listas/tablas de actividad, barras de búsqueda, navegación lateral o tokens de este sistema. No usar para landing pages comerciales fuera del sistema ni para cambios globales de identidad no autorizados.
+description: Diseña e implementa pantallas y componentes UX/UI para aplicaciones web SaaS en Angular siguiendo el sistema de diseño Sage (fondo cálido, superficies blancas, navegación oscura y acentos salvia) con estética bento editorial. Úsala al crear o modificar dashboards, tarjetas KPI, gráficos (barras, dona), listas de actividad/solicitudes, buscadores, navegación lateral o tokens del sistema. No usar para landing pages comerciales fuera del sistema ni cambios globales de identidad no autorizados.
 ---
 
 # SaaS Dashboard Sage (Angular)
 
 ## 1. Propósito y alcance
-Actúa como especialista UX/UI y desarrollador frontend en Angular para aplicaciones web SaaS. Diseña e implementa pantallas y componentes coherentes con la referencia **Sage**, sin imponer su contenido inmobiliario de ejemplo a dominios distintos.
+Actúa como especialista UX/UI y desarrollador frontend en Angular para aplicaciones web SaaS. Diseña e implementa pantallas y componentes coherentes con la referencia **Sage** (estilo bento editorial de estética orgánica-suave), sin imponer su contenido inmobiliario de ejemplo a dominios distintos.
 
 - **Reutiliza antes de recrear:** conserva datos, idioma, convenciones y arquitectura del producto destino. No alteres originales, tokens base ni componentes principales sin autorización explícita.
-- **Alcance de ejecución:** guía el diseño y la implementación en Angular según la solicitud del usuario y las capacidades disponibles. No instales fuentes ni añadas librerías externas sin necesidad; implementa cambios de código o estilos únicamente cuando se solicite y con evidencia real de lo ejecutado.
+- **Alcance de ejecución:** guía el diseño y la implementación en Angular según la solicitud del usuario y las capacidades disponibles. Implementa cambios de código o estilos únicamente cuando se solicite y con evidencia real de lo ejecutado; no instales paquetes adicionales sin justificación.
 
 ## 2. Fuentes de verdad y prioridad
 Archivo de referencia: `tmGWO5Z3VpppPEMQWjxjaU`.
@@ -24,13 +24,17 @@ Archivo de referencia: `tmGWO5Z3VpppPEMQWjxjaU`.
 3. Definición del componente utilizado.
 4. Composición del dashboard.
 
-Cuando las fuentes de diseño sean accesibles, revisa su estado actual. No supongas acceso entre archivos ni disponibilidad de paquetes o estilos. Si faltan fuentes o datos, trabaja con esta especificación y declara explícitamente la limitación. Los nombres semánticos propuestos aquí no prueban la existencia de variables publicadas en el repositorio.
+Cuando las fuentes de diseño sean accesibles, revisa su estado actual. No supongas acceso entre archivos ni disponibilidad de paquetes o estilos; verifica en `package.json` y en el código lo realmente instalado. Si faltan fuentes o datos, trabaja con esta especificación y declara explícitamente la limitación. Los nombres semánticos propuestos aquí no prueban la existencia de variables publicadas en el repositorio.
 
-## 3. Identidad visual
-Interfaz clara y serena: fondo cálido, superficies blancas, bordes/radios amplios en contenedores principales, navegación oscura y acentos salvia. Gráficos en tonos suaves/pastel, iconografía fina y avatares circulares.
+## 3. Identidad visual y profundidad controlada
+Interfaz clara y serena de estilo bento: fondo cálido, superficies blancas, bordes/radios amplios en contenedores principales, navegación lateral compacta tipo rail y acentos verdes salvia/bosque con complementos pastel.
 
 - **Evita:** degradados decorativos, colores saturados ajenos al sistema, sombras pesadas y efectos de cristal (*glassmorphism*).
 - **No confundas** el fondo de una página de documentación o presentación con el fondo de la aplicación.
+- **Evita el aspecto plano sin romper la estética serena:**
+  - Marca separación real de planos entre el lienzo cálido (`#EAE9E3`) y las superficies (`#FFFFFF`) mediante contraste de superficie, bordes finos o elevación mínima contenida únicamente en capas flotantes reales (*tooltips*, menús desplegables o modales).
+  - Crea profundidad mediante jerarquía clara entre contenedor, encabezado, métrica/contenido principal y acción o metadato secundario, además de destacar el elemento activo o de mayor foco (por ejemplo, barra destacada o ítem seleccionado).
+  - Aplica transiciones cortas (`150ms–200ms`) y cambios sutiles de tono o borde en estados interactivos para que la interfaz responda con precisión sin exageraciones visuales.
 
 ## 4. Colores primitivos y tokens semánticos
 
@@ -89,7 +93,7 @@ Mantén estos valores en su contexto existente; no los conviertas en nuevas esca
 - Nunca comuniques estados únicamente mediante color.
 - Verifica contraste sobre el fondo real (WCAG AA: `4.5:1` para texto normal, `3:1` para texto grande y controles/elementos de interfaz pertinentes). Los tonos pastel son principalmente para superficies y series, no para textos pequeños.
 
-## 5. Tipografía
+## 5. Tipografía y alineación numérica
 Familias: **General Sans** (principal), **Inter** (indicadores compactos y montos) y **Plus Jakarta Sans** (metadatos).
 Pesos: Regular `400`, Medium `500`, Semibold `600`.
 
@@ -113,7 +117,9 @@ Pesos: Regular `400`, Medium `500`, Semibold `600`.
 - **Descripciones compactas:** General Sans Medium, `14px` / `24px` (`line-height: 24px`), letter-spacing `0`.
 - **Tooltip:** General Sans Medium, `12px` / `140%`, letter-spacing `0.005em` (`0.5%`).
 
-No normalices ni renombres tokens originales sin autorización. Reutiliza estilos existentes, no confundas la numeración de tokens con etiquetas semánticas HTML (`h1`–`h6`), no sustituyas familias ni simules pesos tipográficos sin indicarlo, y verifica fuentes y licencias antes de usarlas.
+### Reglas tipográficas adicionales
+- Aplica `font-variant-numeric: tabular-nums` en métricas KPI, columnas numéricas, totales de gráficos e importes para garantizar alineación visual precisa.
+- No normalices ni renombres tokens originales sin autorización. Reutiliza estilos existentes, no confundas la numeración de tokens con etiquetas semánticas HTML (`h1`–`h6`), no sustituyas familias ni simules pesos tipográficos sin indicarlo, y verifica fuentes y licencias antes de usarlas.
 
 ## 6. Composición y medidas
 Referencia de escritorio: `1440 × 1024 px`.
@@ -139,36 +145,42 @@ Los bordes de variantes transparentes varían según la pieza (~`0.2px` en Card 
 ## 8. Crear y extender componentes
 1. Revisa primero si existe un componente o subpieza reutilizable en el proyecto.
 2. Define propósito, datos/entradas, acciones, tamaños necesarios y estados.
-3. Mantén la estructura base: contenedor, encabezado, contenido y acción o pie cuando aplique.
+3. Mantén la anatomía: contenedor, encabezado, contenido y acción o pie cuando aplique.
 4. Reutiliza tokens de color, tipografía, radios, espaciados e iconografía del sistema.
 5. Nombra por función o dominio del producto, nunca por contenido de ejemplo ni nombres genéricos (`Frame 123`, `Group 24`, etc.).
 6. Para variantes/estados nuevos, usa nombres descriptivos (por ejemplo, superficie `filled | outline | transparent` o estados `default | hover | focus | pressed | disabled`), distinguiendo claramente lo verificado de lo propuesto.
-7. Parametriza textos, visibilidad y contenido intercambiable mediante inputs/slots en lugar de multiplicar variantes rígidas.
+7. Parametriza textos, visibilidad y contenido intercambiable mediante `input()` / `@Input()` y `ng-content` en lugar de multiplicar variantes rígidas.
 8. Define crecimiento, anchos mínimos, truncamiento o salto de línea ante textos largos, y comportamiento con valores cortos, largos, cero, negativos o nulos/ausentes.
 
 ## 9. Gráficos, listas y calidad
 - Mantén títulos claros, unidades consistentes, leyendas legibles y correspondencia exacta entre datos, cifras y proporciones. No presentes gráficos estáticos como conectados a datos o interactivos.
-- En listas/tablas de actividad, alinea importes a la derecha, usa miniaturas circulares y separadores discretos. Permite altura adaptable, paginación o desplazamiento explícito según la tarea; no copies recortes accidentales de las muestras como regla.
+- En listas/tablas de actividad, alinea importes a la derecha (`tabular-nums`), usa miniaturas circulares y separadores discretos. Permite altura adaptable, paginación o desplazamiento explícito según la tarea; no copies recortes accidentales de las muestras como regla.
 
 ## 10. Extensiones propuestas (no documentadas en la referencia)
 Etiqueta explícitamente como propuestas cuando las implementes:
-- Estados interactivos: `hover`, `focus`, `pressed` y `disabled`.
-- Estados de datos: `loading`, `empty` y `error`.
-- Diseño responsive y navegación móvil: en tablet reorganiza según anchos legibles; en móvil apila elementos y adapta la navegación sin escalar proporcionalmente toda la pantalla, conservando acceso a acciones y datos clave.
-- Accesibilidad: foco visible, etiquetas/nombres accesibles y objetivos táctiles preferentemente de `44 × 44px` cuando aplique.
+- **Estados interactivos:** `hover`, `focus-visible`, `active`/`pressed` y `disabled`, con transiciones suaves (`150ms–200ms`) en propiedades como `background-color`, `border-color` o `color`.
+- **Estados de datos:** `loading` (esqueletos discretos o indicadores limpios coherentes con la paleta), `empty` y `error`.
+- **Diseño responsive y navegación móvil:** en tablet reorganiza según anchos legibles; en móvil apila elementos y adapta la navegación sin escalar proporcionalmente toda la pantalla, conservando acceso a acciones y datos clave.
+- **Accesibilidad:** foco visible, etiquetas/nombres accesibles y objetivos táctiles preferentemente de `44 × 44px` cuando aplique.
 
-## 11. Implementación en Angular y entrega
-- Inspecciona primero la estructura, estilos globales (`styles.scss` / CSS custom properties), librerías de gráficos/iconos y convenciones de Angular del proyecto (componentes standalone o módulos, señales/inputs, estilos encapsulados).
-- Centraliza los tokens como CSS custom properties (`--sage-*`) y separa la lógica/datos de la presentación. No añadas dependencias si no son necesarias.
-- Traduce porcentajes de tracking a `em` (`3%` → `0.03em`, `0.5%` → `0.005em`), distingue interlineado fijo (`px`) de proporcional (`1.4`), y valida cómo renderiza el navegador frente a `auto` en diseño.
+## 11. Uso de librerías e implementación en Angular
+- **Inspección previa:** revisa primero `package.json`, la estructura, estilos globales (`styles.scss` / CSS custom properties) y convenciones de Angular del proyecto (componentes standalone, signals/`input()`, estilos encapsulados).
+- **Librerías integradas en la base del proyecto (úsales en lugar de reinventar su funcionalidad):**
+  - **Estilos y tokens:** CSS custom properties (`--sage-*`) centralizadas en estilos globales (`styles.scss`), combinables con SCSS o clases utilitarias existentes.
+  - **Gráficos (`ngx-echarts` + `echarts`):** úsalos para gráficos de barras, dona/circular, *tooltips* dinámicos, series resaltadas y respuesta al redimensionamiento; configura los colores con los tokens/paleta Sage en lugar de usar los colores por defecto de la librería.
+  - **Iconografía (`@lucide/angular`):** úsalo para iconos de trazo fino y uniforme (`strokeWidth` controlado, `24px` en navegación/acciones principales y `16px–20px` en filas/metadatos), evitando SVGs sueltos improvisados.
+  - **Comportamiento y accesibilidad (`@angular/cdk`):** úsalo para *overlays*/menús, gestión de foco/accesibilidad y *breakpoints* *responsive* sin imponer estilos visuales ajenos al sistema.
+- **Reglas de conversión CSS:**
+  - Centraliza los tokens como CSS custom properties (`--sage-*`) y separa la lógica/datos de la presentación. No añadas dependencias extra si no son necesarias.
+  - Traduce porcentajes de tracking a `em` (`3%` → `0.03em`, `0.5%` → `0.005em`), distingue interlineado fijo (`px`) de proporcional (`1.4`), y valida cómo renderiza el navegador frente a `auto` en diseño.
 
 ### Flujo y reporte final obligatorio
 Sigue este orden:
 1. Identifica alcance, destino y datos/fuentes disponibles.
-2. Revisa tokens y componentes existentes en Angular.
+2. Revisa tokens, librerías instaladas y componentes existentes en Angular.
 3. Decide qué reutilizar y qué crear o extender.
 4. Aplica tokens y reglas sin tocar lo que está fuera de alcance.
-5. Revisa contraste, alineación, desbordamiento, estados, responsive y coherencia de datos.
+5. Revisa contraste, jerarquía visual, alineación (`tabular-nums`), desbordamiento, estados interactivos/datos, responsive y coherencia de datos.
 
 Al finalizar cada tarea, entrega un resumen breve con:
 - **Reutilizado y creado/extendido** en el proyecto Angular.

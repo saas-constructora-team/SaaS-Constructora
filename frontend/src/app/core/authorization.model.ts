@@ -18,6 +18,7 @@ export interface AuthorizationUserResponse {
   id: string;
   email: string;
   fullName: string;
+  username?: string | null;
   role: TenantRole;
   active: boolean;
   canCreatePersonnel: boolean;

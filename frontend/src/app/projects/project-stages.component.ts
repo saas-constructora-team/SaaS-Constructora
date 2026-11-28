@@ -11,8 +11,9 @@ import {
   inject,
   signal
 } from '@angular/core';
+import { watchProjectChanges } from '../core/project-changes';
 import { RealtimeService } from '../core/realtime.service';
-import { ProjectChangeEvent, ProjectStage } from './project.model';
+import { ProjectStage } from './project.model';
 import { ProjectService, projectErrorMessage } from './project.service';
 
 /**
@@ -201,7 +202,7 @@ import { ProjectService, projectErrorMessage } from './project.service';
 export class ProjectStagesComponent implements OnChanges, OnDestroy {
   private readonly projects = inject(ProjectService);
   private readonly realtime = inject(RealtimeService);
-  private stopRealtime: (() => void) | null = null;
+  private stopWatchingChanges: (() => void) | null = null;
 
   @Input({ required: true }) projectId!: string;
   @Input() projectName = '';
@@ -221,28 +222,24 @@ export class ProjectStagesComponent implements OnChanges, OnDestroy {
       this.cancelEditing();
       this.newStageName.set('');
       this.notice.set(null);
-      this.stopRealtime?.();
+      this.stopWatchingChanges?.();
       this.load();
-      this.stopRealtime = this.realtime.changes(
-        event => this.onProjectChanged(event), this.projectId);
+      this.stopWatchingChanges = watchProjectChanges(this.realtime, {
+        projectId: this.projectId,
+        sections: ['STAGE', 'PROJECT'],
+        onReload: () => this.load()
+      });
     }
   }
 
   ngOnDestroy(): void {
-    this.stopRealtime?.();
-    this.stopRealtime = null;
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
   }
 
   @HostListener('window:focus')
   onWindowFocus(): void {
     if (this.projectId) {
-      this.load();
-    }
-  }
-
-  private onProjectChanged(event: ProjectChangeEvent): void {
-    if (event.projectId === this.projectId
-        && (event.section === 'STAGE' || event.section === 'PROJECT')) {
       this.load();
     }
   }

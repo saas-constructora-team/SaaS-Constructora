@@ -71,18 +71,35 @@ export interface ProjectAssignment {
   assignedAt: string;
 }
 
+/** Colores Sage permitidos para representar una etapa en el tablero. */
+export type StageColor = 'SAGE' | 'LAVENDER' | 'SAND' | 'TOSCA' | 'ACCENT';
+
 /** Etapa de un proyecto (las seis iniciales se crean con el proyecto). */
 export interface ProjectStage {
   id: string;
   projectId: string;
   name: string;
   order: number;
+  color: StageColor;
   createdAt: string;
 }
 
-/** Cuerpo de alta o edición de una etapa: el backend solo permite el nombre. */
+/** Cuerpo de alta o edición de una etapa; el color ausente se conserva. */
 export interface ProjectStageRequest {
   name: string;
+  color?: StageColor | null;
+}
+
+/** Una etapa concreta dentro del cambio atómico de color del tablero. */
+export interface StageColorUpdate {
+  projectId: string;
+  stageId: string;
+  color: StageColor;
+}
+
+/** Cambia el color de varias etapas en una sola transacción. */
+export interface UpdateStageColorsRequest {
+  stages: StageColorUpdate[];
 }
 
 /** Avance compartido del proyecto, persistido en el backend. */

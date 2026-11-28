@@ -2,6 +2,7 @@ export type DocumentType = 'NATIONAL_ID' | 'FOREIGN_ID' | 'PASSPORT' | 'IDENTITY
 export type InvitationRole = 'WORKER' | 'MEMBER';
 export interface InviteWorkerRequest {
   fullName: string;
+  username?: string;
   documentType: DocumentType;
   documentNumber: string;
   phone: string;

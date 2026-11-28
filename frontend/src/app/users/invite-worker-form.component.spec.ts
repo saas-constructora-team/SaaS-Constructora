@@ -8,7 +8,7 @@ import { ProjectService } from '../projects/project.service';
 import { InviteWorkerFormComponent } from './invite-worker-form.component';
 import { InviteWorkerResponse } from '../auth/invitation.model';
 
-const valid = { fullName: 'Worker', documentType: 'NATIONAL_ID' as const, documentNumber: '123', phone: '123',
+const valid = { fullName: 'Worker', username: '', documentType: 'NATIONAL_ID' as const, documentNumber: '123', phone: '123',
   email: 'worker@example.com', emergencyContactName: 'Contact', emergencyContactPhone: '456', position: 'Operario', role: 'WORKER' as const, projectId: '' };
 const response: InviteWorkerResponse = { workerId: 'worker', membershipId: 'membership', userId: 'worker',
   email: valid.email, status: 'INVITED', invitationExpiresAt: '2027-01-01T12:00:00' };
@@ -39,8 +39,11 @@ describe('InviteWorkerFormComponent', () => {
   it('invites without projectId and explains that assignment is later', () => {
     const fixture = TestBed.createComponent(InviteWorkerFormComponent); const c = fixture.componentInstance;
     c.form.setValue(valid); c.submit(); fixture.detectChanges();
-    const { projectId, ...payload } = valid;
-    expect(api.invite).toHaveBeenCalledOnceWith(payload);
+    const { projectId, username, ...payload } = valid;
+    expect(api.invite).toHaveBeenCalledOnceWith({
+      ...payload,
+      ...(username ? { username: username.toLowerCase() } : {})
+    });
     expect(c.sent()).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain('pendiente de aceptación');
     c.submit(); expect(api.invite).toHaveBeenCalledTimes(1);

@@ -2,8 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../auth/auth.service';
+import { watchProjectChanges } from '../core/project-changes';
 import { RealtimeService } from '../core/realtime.service';
-import { Project, ProjectAssignment, ProjectChangeEvent } from '../projects/project.model';
+import { Project, ProjectAssignment } from '../projects/project.model';
 import { ProjectService, projectErrorMessage } from '../projects/project.service';
 import { SiteLogEntry, SiteLogRecordRequest, SiteLogStatus, SiteLogType } from './site-log.model';
 import { SiteLogService, siteLogErrorMessage } from './site-log.service';
@@ -323,7 +324,7 @@ export class SiteLogComponent implements OnInit, OnDestroy {
   private readonly siteLogService = inject(SiteLogService);
   private readonly auth = inject(AuthService);
   private readonly realtime = inject(RealtimeService);
-  private stopRealtime: (() => void) | null = null;
+  private stopWatchingChanges: (() => void) | null = null;
 
   readonly projects = signal<Project[]>([]);
   readonly selectedProjectId = signal('');
@@ -366,8 +367,8 @@ export class SiteLogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopRealtime?.();
-    this.stopRealtime = null;
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
   }
 
   @HostListener('window:focus')
@@ -379,20 +380,27 @@ export class SiteLogComponent implements OnInit, OnDestroy {
   }
 
   private subscribeToProject(projectId: string): void {
-    this.stopRealtime?.();
-    this.stopRealtime = projectId
-      ? this.realtime.changes(event => this.onProjectChanged(event), projectId)
-      : null;
-  }
-
-  private onProjectChanged(event: ProjectChangeEvent): void {
-    if (event.projectId === this.selectedProjectId()
-        && (event.section === 'SITE_LOG' || event.section === 'DOCUMENT')) {
-      this.loadEntries(this.selectedProjectId());
-      if (event.section === 'SITE_LOG') {
-        this.loadAssignments(this.selectedProjectId(), false);
-      }
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
+    if (!projectId) {
+      return;
     }
+    this.stopWatchingChanges = watchProjectChanges(this.realtime, {
+      projectId,
+      sections: ['SITE_LOG', 'DOCUMENT'],
+      onReload: event => {
+        const currentProjectId = this.selectedProjectId();
+        if (!currentProjectId) {
+          return;
+        }
+        this.loadEntries(currentProjectId);
+        // En reconexión (sin evento) se resincroniza todo; ante un evento
+        // DOCUMENT basta con recargar las entradas.
+        if (!event || event.section === 'SITE_LOG') {
+          this.loadAssignments(currentProjectId, false);
+        }
+      }
+    });
   }
 
   openForm(): void {

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, Input, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, forkJoin, of } from 'rxjs';
+import { watchProjectChanges } from '../core/project-changes';
 import { RealtimeService } from '../core/realtime.service';
-import { Project, ProjectAssignment, ProjectChangeEvent, ProjectStage } from './project.model';
+import { Project, ProjectAssignment, ProjectStage } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
 import { ProjectAssignmentsComponent } from './project-assignments.component';
 import { ProjectStagesComponent } from './project-stages.component';
@@ -371,7 +372,7 @@ import { AuthService } from '../auth/auth.service';
 export class ProjectListComponent implements OnInit, OnDestroy {
   private readonly projectsService = inject(ProjectService);
   private readonly realtime = inject(RealtimeService);
-  private stopRealtime: (() => void) | null = null;
+  private stopWatchingChanges: (() => void) | null = null;
   readonly auth = inject(AuthService);
 
   @Input() role = '';
@@ -429,24 +430,20 @@ export class ProjectListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.load();
-    this.stopRealtime = this.realtime.changes(event => this.onProjectChanged(event));
+    this.stopWatchingChanges = watchProjectChanges(this.realtime, {
+      excludeSections: ['SITE_LOG', 'DOCUMENT'],
+      onReload: () => this.load()
+    });
   }
 
   ngOnDestroy(): void {
-    this.stopRealtime?.();
-    this.stopRealtime = null;
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
   }
 
   /** Respaldo si el canal SSE no estuvo disponible al volver a la pestaña. */
   @HostListener('window:focus')
   onWindowFocus(): void {
-    this.load();
-  }
-
-  private onProjectChanged(event: ProjectChangeEvent): void {
-    if (event.section === 'SITE_LOG' || event.section === 'DOCUMENT') {
-      return;
-    }
     this.load();
   }
 

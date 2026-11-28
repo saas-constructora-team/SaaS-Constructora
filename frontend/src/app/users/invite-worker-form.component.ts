@@ -91,6 +91,7 @@ export class InviteWorkerFormComponent {
   readonly projectError = signal<string | null>(null);
   readonly fields = [
     { key: 'fullName', label: 'Nombre completo', type: 'text' },
+    { key: 'username', label: 'Username (opcional)', type: 'text' },
     { key: 'documentNumber', label: 'Número de documento', type: 'text' },
     { key: 'phone', label: 'Teléfono', type: 'tel' },
     { key: 'email', label: 'Correo electrónico', type: 'email' },
@@ -104,6 +105,7 @@ export class InviteWorkerFormComponent {
   ];
   readonly form = this.fb.nonNullable.group({
     fullName: ['', [notBlank, Validators.maxLength(150)]],
+    username: ['', [Validators.maxLength(30), Validators.pattern(/^[a-zA-Z0-9._-]+$/)]],
     documentType: this.fb.nonNullable.control<DocumentType>('NATIONAL_ID', [Validators.required, Validators.pattern(/^(NATIONAL_ID|FOREIGN_ID|PASSPORT|IDENTITY_CARD|OTHER)$/)]),
     documentNumber: ['', [notBlank, Validators.maxLength(50)]],
     phone: ['', [notBlank, Validators.maxLength(30)]],
@@ -134,12 +136,13 @@ export class InviteWorkerFormComponent {
   submit(): void {
     if (!this.allowed() || this.saving() || this.sent()) return;
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    const { projectId, ...values } = this.form.getRawValue();
+    const { projectId, username, ...values } = this.form.getRawValue();
     if (projectId && !this.projects().some(project => project.id === projectId)) {
       this.error.set('Selecciona un proyecto disponible.'); return;
     }
+    const normalizedUsername = username.trim().toLowerCase();
     this.saving.set(true); this.error.set(null);
-    this.api.invite({ ...values, ...(projectId ? { projectId } : {}) }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.invite({ ...values, ...(normalizedUsername ? { username: normalizedUsername } : {}), ...(projectId ? { projectId } : {}) }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: response => {
         this.saving.set(false);
         if (!this.allowed()) return;

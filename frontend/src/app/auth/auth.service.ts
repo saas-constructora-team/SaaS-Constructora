@@ -68,6 +68,14 @@ export class AuthService {
     this.session.set(null);
   }
 
+  patchSessionUser(patch: Partial<LoginResponse['user']>): void {
+    const current = this.session();
+    if (!current) return;
+    const next: LoginResponse = { ...current, user: { ...current.user, ...patch } };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    this.session.set(next);
+  }
+
   private openSession(res: LoginResponse | GoogleAuthResponse | RegisterTenantResponse): void {
     const session: LoginResponse = {
       accessToken: res.accessToken,
