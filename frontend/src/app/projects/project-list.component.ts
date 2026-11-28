@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, Input, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { catchError, forkJoin, of } from 'rxjs';
+import { watchProjectChanges } from '../core/project-changes';
+import { RealtimeService } from '../core/realtime.service';
 import { Project, ProjectAssignment, ProjectStage } from './project.model';
 import { ProjectFormComponent } from './project-form.component';
 import { ProjectAssignmentsComponent } from './project-assignments.component';
 import { ProjectStagesComponent } from './project-stages.component';
-import { ProjectStageProgressService } from './project-stage-progress.service';
 import { ProjectService, projectErrorMessage } from './project.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -368,9 +369,10 @@ import { AuthService } from '../auth/auth.service';
 
   `]
 })
-export class ProjectListComponent implements OnInit {
+export class ProjectListComponent implements OnInit, OnDestroy {
   private readonly projectsService = inject(ProjectService);
-  private readonly stageProgress = inject(ProjectStageProgressService);
+  private readonly realtime = inject(RealtimeService);
+  private stopWatchingChanges: (() => void) | null = null;
   readonly auth = inject(AuthService);
 
   @Input() role = '';
@@ -428,6 +430,21 @@ export class ProjectListComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.stopWatchingChanges = watchProjectChanges(this.realtime, {
+      excludeSections: ['SITE_LOG', 'DOCUMENT'],
+      onReload: () => this.load()
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
+  }
+
+  /** Respaldo si el canal SSE no estuvo disponible al volver a la pestaña. */
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    this.load();
   }
 
   openCreate(): void {
@@ -484,7 +501,7 @@ export class ProjectListComponent implements OnInit {
   }
 
   /**
-   * Etapa actual del proyecto: la última elegida o, si nunca se cambió,
+   * Etapa actual del proyecto: la que guardó el backend o, si nunca se cambió,
    * la primera etapa (donde el backend deja todo proyecto nuevo).
    */
   currentStageId(projectId: string): string | null {
@@ -492,7 +509,7 @@ export class ProjectListComponent implements OnInit {
     if (stages.length === 0) {
       return null;
     }
-    const saved = this.stageProgress.stageId(projectId);
+    const saved = this.projects().find(project => project.id === projectId)?.currentStageId ?? null;
     return (stages.find(stage => stage.id === saved) ?? stages[0]).id;
   }
 
@@ -579,9 +596,16 @@ export class ProjectListComponent implements OnInit {
       return;
     }
 
-    this.stageProgress.select(project.id, stage.id);
     this.error.set(null);
-    this.notice.set(`"${project.name}" ahora está en la etapa "${stage.name}".`);
+    this.projectsService.selectStage(project.id, stage.id).subscribe({
+      next: progress => {
+        this.projects.update(items => items.map(item => item.id === project.id
+          ? { ...item, currentStageId: progress.currentStageId }
+          : item));
+        this.notice.set(`"${project.name}" ahora está en la etapa "${stage.name}".`);
+      },
+      error: err => this.error.set(projectErrorMessage(err))
+    });
   }
 
   confirmDelete(project: Project): void {
@@ -605,7 +629,6 @@ export class ProjectListComponent implements OnInit {
         if (this.stagesOf()?.id === project.id) {
           this.stagesOf.set(null);
         }
-        this.stageProgress.clear(project.id);
         this.notice.set('Proyecto eliminado correctamente.');
         this.load();
       },

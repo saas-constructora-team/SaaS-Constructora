@@ -23,7 +23,13 @@ export const routes: Routes = [
       // Replace this redirect when the independent dashboard is available.
       { path: 'dashboard', pathMatch: 'full', redirectTo: 'proyectos' },
       { path: 'proyectos', component: ProjectListComponent, resolve: { role: routeRole } },
+      {
+        path: 'tablero',
+        loadComponent: () => import('./tasks/task-board.component')
+          .then(module => module.TaskBoardComponent)
+      },
       { path: 'bitacora', component: SiteLogComponent },
+      { path: 'cuenta', loadComponent: () => import('./account/account.component').then(m => m.AccountComponent) },
       { path: 'usuarios', children: usersRoutes }
     ]
   },

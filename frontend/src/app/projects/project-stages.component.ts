@@ -2,13 +2,17 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   SimpleChanges,
   inject,
   signal
 } from '@angular/core';
+import { watchProjectChanges } from '../core/project-changes';
+import { RealtimeService } from '../core/realtime.service';
 import { ProjectStage } from './project.model';
 import { ProjectService, projectErrorMessage } from './project.service';
 
@@ -195,8 +199,10 @@ import { ProjectService, projectErrorMessage } from './project.service';
     }
   `]
 })
-export class ProjectStagesComponent implements OnChanges {
+export class ProjectStagesComponent implements OnChanges, OnDestroy {
   private readonly projects = inject(ProjectService);
+  private readonly realtime = inject(RealtimeService);
+  private stopWatchingChanges: (() => void) | null = null;
 
   @Input({ required: true }) projectId!: string;
   @Input() projectName = '';
@@ -216,6 +222,24 @@ export class ProjectStagesComponent implements OnChanges {
       this.cancelEditing();
       this.newStageName.set('');
       this.notice.set(null);
+      this.stopWatchingChanges?.();
+      this.load();
+      this.stopWatchingChanges = watchProjectChanges(this.realtime, {
+        projectId: this.projectId,
+        sections: ['STAGE', 'PROJECT'],
+        onReload: () => this.load()
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.stopWatchingChanges?.();
+    this.stopWatchingChanges = null;
+  }
+
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    if (this.projectId) {
       this.load();
     }
   }

@@ -19,7 +19,7 @@ describe('AcceptInvitationComponent', () => {
   beforeEach(() => {
     params = new BehaviorSubject(convertToParamMap({ token: 'token' }));
     session = signal<LoginResponse | null>(null);
-    preview = jasmine.createSpy('preview').and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00' }));
+    preview = jasmine.createSpy('preview').and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: true }));
     accept = jasmine.createSpy('acceptInvitation').and.returnValue(of(result));
     navigate = jasmine.createSpy('navigateByUrl').and.resolveTo(true);
     TestBed.configureTestingModule({ imports: [AcceptInvitationComponent], providers: [
@@ -61,33 +61,37 @@ describe('AcceptInvitationComponent', () => {
     expect(c.accepted()).toBeTrue(); expect(c.form.controls.password.value).toBe('');
   });
   it('accepts an existing account without asking for or sending its password', () => {
+    preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
-    c.form.controls.account.setValue('existing'); c.accept();
+    c.accept();
     expect(accept).toHaveBeenCalledOnceWith({ token: 'token' });
   });
-  it('requires explicit consent before replacing a previous company session', () => {
+  it('accepts an existing account even when another company session is open', () => {
+    preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
     session.set({ ...result, accessToken: 'previous', user: { ...result.user, tenantId: 'previous-company' } });
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
-    c.form.controls.account.setValue('existing'); c.accept();
-    expect(accept).not.toHaveBeenCalled(); expect(c.error()).toContain('Confirma');
-    c.form.controls.switchSession.setValue(true); c.accept(); expect(accept).toHaveBeenCalled();
+    c.accept();
+    expect(accept).toHaveBeenCalledOnceWith({ token: 'token' });
+    expect(c.error()).toBeNull();
   });
   it('prevents duplicate acceptance requests', () => {
+    preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
     const pending = new Subject<LoginResponse>(); accept.and.returnValue(pending);
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
-    c.form.controls.account.setValue('existing'); c.accept(); c.accept();
+    c.accept(); c.accept();
     expect(accept).toHaveBeenCalledTimes(1);
   });
-  it('handles a password-required or invalid-token response without claiming success', () => {
+  it('handles an invalid or expired token response without claiming success', () => {
     accept.and.returnValue(throwError(() => ({ status: 400 })));
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
-    c.form.controls.account.setValue('existing'); c.accept();
-    expect(c.error()).toContain('definir contraseña'); expect(navigate).not.toHaveBeenCalled(); expect(c.saving()).toBeFalse();
+    c.form.patchValue({ password: '12345678', confirmPassword: '12345678' }); c.accept();
+    expect(c.error()).toContain('No se pudo aceptar la invitación'); expect(navigate).not.toHaveBeenCalled(); expect(c.saving()).toBeFalse();
   });
   it('cancels acceptance if the link changes and discards a late result', () => {
+    preview.and.returnValue(of({ companyName: 'Company', email: result.user.email, expiresAt: '2027-01-01T12:00:00', requiresPassword: false }));
     const pending = new Subject<LoginResponse>(); accept.and.returnValue(pending);
     const c = TestBed.createComponent(AcceptInvitationComponent).componentInstance;
-    c.form.controls.account.setValue('existing'); c.accept();
+    c.accept();
     params.next(convertToParamMap({ token: 'another' })); pending.next(result);
     expect(navigate).not.toHaveBeenCalled(); expect(c.saving()).toBeFalse();
   });

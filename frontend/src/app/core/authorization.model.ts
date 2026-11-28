@@ -10,16 +10,19 @@ export interface KnownCapabilities {
   createProjects: CapabilityState;
   deleteProjects: CapabilityState;
   managePersonnel: CapabilityState;
+  manageSiteLog: CapabilityState;
 }
 
-/** Exact response of GET /api/users and the four permission POST endpoints. */
+/** Exact response of GET /api/users and the permission POST endpoints. */
 export interface AuthorizationUserResponse {
   id: string;
   email: string;
   fullName: string;
+  username?: string | null;
   role: TenantRole;
   active: boolean;
   canCreatePersonnel: boolean;
+  canManageSiteLog: boolean;
 }
 
 /** Scope captured when a request starts, to reject stale or cross-tenant data. */

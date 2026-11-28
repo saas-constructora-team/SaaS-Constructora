@@ -13,6 +13,10 @@ export class PermissionService {
     source: this.auth.session,
     computation: (): boolean | null => null
   });
+  private readonly siteLog = linkedSignal({
+    source: this.auth.session,
+    computation: (): boolean | null => null
+  });
 
   readonly tenantRole = computed<TenantRole | null>(() => {
     const role = this.auth.session()?.user.role;
@@ -26,7 +30,8 @@ export class PermissionService {
       managePermissions: administrative,
       createProjects: administrative,
       deleteProjects: administrative,
-      managePersonnel: this.personnelCapability()
+      managePersonnel: this.personnelCapability(),
+      manageSiteLog: this.siteLogCapability()
     };
   });
 
@@ -41,6 +46,19 @@ export class PermissionService {
 
   clearPersonnelPermissions(): void {
     this.personnel.set(null);
+  }
+
+  /** No HTTP request: callers must supply an actual API response for this user. */
+  receiveSiteLogPermissions(scope: AuthorizationScope, user: AuthorizationUserResponse): boolean {
+    const session = this.auth.session();
+    if (!session || !this.matchesScope(scope) || user.id !== session.user.id) return false;
+    // canManageSiteLog is the effective capability, not the raw membership flag.
+    this.siteLog.set(user.active && user.canManageSiteLog);
+    return true;
+  }
+
+  clearSiteLogPermissions(): void {
+    this.siteLog.set(null);
   }
 
   manageProjectAssignments(context: ProjectAuthorizationContext): CapabilityState {
@@ -67,6 +85,15 @@ export class PermissionService {
   private personnelCapability(): CapabilityState {
     if (!this.auth.session()) return 'denied';
     const effective = this.personnel();
+    if (effective !== null) return effective ? 'granted' : 'denied';
+    if (this.tenantRole() === 'ADMIN') return 'granted';
+    // The backend flag can affect non-admin roles; absence is not a denial.
+    return 'unknown';
+  }
+
+  private siteLogCapability(): CapabilityState {
+    if (!this.auth.session()) return 'denied';
+    const effective = this.siteLog();
     if (effective !== null) return effective ? 'granted' : 'denied';
     if (this.tenantRole() === 'ADMIN') return 'granted';
     // The backend flag can affect non-admin roles; absence is not a denial.

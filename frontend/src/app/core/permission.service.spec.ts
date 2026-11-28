@@ -12,7 +12,7 @@ function login(role: TenantRole, tenantId = 'tenant', token = 'token'): LoginRes
 
 function response(allowed: boolean): AuthorizationUserResponse {
   return { id: 'user', email: 'user@example.com', fullName: 'User', role: 'MEMBER',
-    active: true, canCreatePersonnel: allowed };
+    active: true, canCreatePersonnel: allowed, canManageSiteLog: allowed };
 }
 
 describe('PermissionService', () => {
@@ -34,7 +34,8 @@ describe('PermissionService', () => {
     it(`denies administrative capabilities but leaves personnel unknown for ${role}`, () => {
       session.set(login(role));
       expect(service.capabilities()).toEqual({ administerUsers: 'denied', managePermissions: 'denied',
-        createProjects: 'denied', deleteProjects: 'denied', managePersonnel: 'unknown' });
+        createProjects: 'denied', deleteProjects: 'denied', managePersonnel: 'unknown',
+        manageSiteLog: 'unknown' });
     });
   }
 
@@ -52,32 +53,52 @@ describe('PermissionService', () => {
     expect(service.capabilities().managePersonnel).toBe('unknown');
   });
 
+  it('uses effective granted and denied site-log permissions from backend', () => {
+    session.set(login('MEMBER'));
+    expect(service.receiveSiteLogPermissions(scope, response(true))).toBeTrue();
+    expect(service.capabilities().manageSiteLog).toBe('granted');
+    service.receiveSiteLogPermissions(scope, response(false));
+    expect(service.capabilities().manageSiteLog).toBe('denied');
+    service.clearSiteLogPermissions();
+    expect(service.capabilities().manageSiteLog).toBe('unknown');
+  });
+
   it('rejects other users, tenants and outdated tokens', () => {
     session.set(login('MEMBER'));
     expect(service.receivePersonnelPermissions(scope, { ...response(true), id: 'other' })).toBeFalse();
     expect(service.receivePersonnelPermissions({ ...scope, tenantId: 'other' }, response(true))).toBeFalse();
     expect(service.receivePersonnelPermissions({ ...scope, accessToken: 'old' }, response(true))).toBeFalse();
+    expect(service.receiveSiteLogPermissions(scope, { ...response(true), id: 'other' })).toBeFalse();
+    expect(service.receiveSiteLogPermissions({ ...scope, tenantId: 'other' }, response(true))).toBeFalse();
+    expect(service.receiveSiteLogPermissions({ ...scope, accessToken: 'old' }, response(true))).toBeFalse();
     expect(service.capabilities().managePersonnel).toBe('unknown');
+    expect(service.capabilities().manageSiteLog).toBe('unknown');
   });
 
   it('clears additional permissions on session changes, including token renewal', () => {
     session.set(login('MEMBER'));
     service.receivePersonnelPermissions(scope, response(true));
+    service.receiveSiteLogPermissions(scope, response(true));
     session.set(login('MEMBER', 'tenant', 'renewed'));
     expect(service.capabilities().managePersonnel).toBe('unknown');
+    expect(service.capabilities().manageSiteLog).toBe('unknown');
     session.set(login('ADMIN', 'another', 'another-token'));
     expect(service.capabilities().createProjects).toBe('granted');
     session.set(login('WORKER', 'another', 'worker-token'));
     expect(service.capabilities().managePersonnel).toBe('unknown');
+    expect(service.capabilities().manageSiteLog).toBe('unknown');
   });
 
   it('clears permissions on logout and does not reuse them after another login', () => {
     session.set(login('MEMBER'));
     service.receivePersonnelPermissions(scope, response(true));
+    service.receiveSiteLogPermissions(scope, response(true));
     session.set(null);
     expect(service.capabilities().managePersonnel).toBe('denied');
+    expect(service.capabilities().manageSiteLog).toBe('denied');
     session.set(login('MEMBER'));
     expect(service.capabilities().managePersonnel).toBe('unknown');
+    expect(service.capabilities().manageSiteLog).toBe('unknown');
   });
 
   it('evaluates MEMBER and LEAD project assignments from scoped data', () => {

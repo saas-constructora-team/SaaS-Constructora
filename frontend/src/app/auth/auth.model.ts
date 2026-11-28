@@ -13,6 +13,7 @@ export interface AuthUser {
   tenantId: string;
   email: string;
   fullName: string;
+  username?: string | null;
   role: string;
 }
 

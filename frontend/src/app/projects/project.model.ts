@@ -33,6 +33,8 @@ export interface Project {
   hasSitePhotos: boolean;
   status: string;
   createdAt: string;
+  /** Etapa en curso compartida por todos los miembros con acceso al proyecto. */
+  currentStageId: string | null;
 }
 
 export interface CreateProjectRequest {
@@ -69,16 +71,53 @@ export interface ProjectAssignment {
   assignedAt: string;
 }
 
+/** Colores Sage permitidos para representar una etapa en el tablero. */
+export type StageColor = 'SAGE' | 'LAVENDER' | 'SAND' | 'TOSCA' | 'ACCENT';
+
 /** Etapa de un proyecto (las seis iniciales se crean con el proyecto). */
 export interface ProjectStage {
   id: string;
   projectId: string;
   name: string;
   order: number;
+  color: StageColor;
   createdAt: string;
 }
 
-/** Cuerpo de alta o edición de una etapa: el backend solo permite el nombre. */
+/** Cuerpo de alta o edición de una etapa; el color ausente se conserva. */
 export interface ProjectStageRequest {
   name: string;
+  color?: StageColor | null;
+}
+
+/** Una etapa concreta dentro del cambio atómico de color del tablero. */
+export interface StageColorUpdate {
+  projectId: string;
+  stageId: string;
+  color: StageColor;
+}
+
+/** Cambia el color de varias etapas en una sola transacción. */
+export interface UpdateStageColorsRequest {
+  stages: StageColorUpdate[];
+}
+
+/** Avance compartido del proyecto, persistido en el backend. */
+export interface ProjectProgress {
+  projectId: string;
+  currentStageId: string | null;
+  version: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+/** Aviso SSE: solo metadatos; los datos se vuelven a consultar por la API. */
+export interface ProjectChangeEvent {
+  eventId: string;
+  tenantId: string;
+  projectId: string;
+  section: 'PROJECT' | 'STAGE' | 'PROGRESS' | 'ASSIGNMENT' | 'SITE_LOG' | 'DOCUMENT';
+  entityId: string | null;
+  actorUserId: string | null;
+  occurredAt: string;
 }

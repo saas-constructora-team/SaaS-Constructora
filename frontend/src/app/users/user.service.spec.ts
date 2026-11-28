@@ -8,7 +8,7 @@ describe('UserService permission endpoints', () => {
   let api: UserService;
   let http: HttpTestingController;
   const user: UserSummary = { id: 'user', fullName: 'User', email: 'user@example.com',
-    role: 'MEMBER', active: true, canCreatePersonnel: false };
+    role: 'MEMBER', active: true, canCreatePersonnel: false, canManageSiteLog: false };
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     api = TestBed.inject(UserService);
@@ -26,7 +26,9 @@ describe('UserService permission endpoints', () => {
   const cases = [
     ['enablePermissions', 'permissions/enable'], ['disablePermissions', 'permissions/disable'],
     ['enablePersonnelCreation', 'personnel-creation/enable'],
-    ['disablePersonnelCreation', 'personnel-creation/disable']
+    ['disablePersonnelCreation', 'personnel-creation/disable'],
+    ['enableSiteLogManagement', 'site-log-management/enable'],
+    ['disableSiteLogManagement', 'site-log-management/disable']
   ] as const;
   for (const [method, path] of cases) {
     it(`POSTs ${path} without an invented request body`, () => {

@@ -1,9 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
-import { ProjectStageProgressService } from './project-stage-progress.service';
-import { Project, ProjectAssignment, ProjectStage } from './project.model';
+import { RealtimeService } from '../core/realtime.service';
+import { Project, ProjectAssignment, ProjectChangeEvent, ProjectStage } from './project.model';
 import { ProjectService } from './project.service';
 import { ProjectListComponent } from './project-list.component';
 import { UserService } from '../users/user.service';
@@ -11,7 +11,7 @@ import { UserService } from '../users/user.service';
 describe('ProjectListComponent', () => {
   let fixture: ComponentFixture<ProjectListComponent>;
   let projectService: jasmine.SpyObj<ProjectService>;
-  let stageProgress: jasmine.SpyObj<ProjectStageProgressService>;
+  let realtime: jasmine.SpyObj<RealtimeService>;
   let userService: jasmine.SpyObj<UserService>;
 
   const activeFirst: Project = {
@@ -37,19 +37,22 @@ describe('ProjectListComponent', () => {
     hasPreviousPlans: false,
     hasSitePhotos: false,
     status: 'ACTIVE',
-    createdAt: '2026-01-01T00:00:00Z'
+    createdAt: '2026-01-01T00:00:00Z',
+    currentStageId: 'stage-2'
   };
 
-  const activeFinal: Project = { ...activeFirst, id: 'active-final', name: 'Proyecto Dos' };
+  const activeFinal: Project = {
+    ...activeFirst, id: 'active-final', name: 'Proyecto Dos', currentStageId: 'stage-6'
+  };
   const completed: Project = { ...activeFirst, id: 'completed', status: 'COMPLETED' };
 
   const stages: ProjectStage[] = [
-    { id: 'stage-1', projectId: 'active-first', name: 'Diseño', order: 1, createdAt: '' },
-    { id: 'stage-2', projectId: 'active-first', name: 'Construcción', order: 2, createdAt: '' },
-    { id: 'stage-3', projectId: 'active-first', name: 'Estructura', order: 3, createdAt: '' },
-    { id: 'stage-4', projectId: 'active-first', name: 'Acabados', order: 4, createdAt: '' },
-    { id: 'stage-5', projectId: 'active-first', name: 'Inspección', order: 5, createdAt: '' },
-    { id: 'stage-6', projectId: 'active-first', name: 'Cierre, Liquidación y Entrega', order: 6, createdAt: '' }
+    { id: 'stage-1', projectId: 'active-first', name: 'Diseño', order: 1, color: 'SAGE', createdAt: '' },
+    { id: 'stage-2', projectId: 'active-first', name: 'Construcción', order: 2, color: 'SAGE', createdAt: '' },
+    { id: 'stage-3', projectId: 'active-first', name: 'Estructura', order: 3, color: 'SAGE', createdAt: '' },
+    { id: 'stage-4', projectId: 'active-first', name: 'Acabados', order: 4, color: 'SAGE', createdAt: '' },
+    { id: 'stage-5', projectId: 'active-first', name: 'Inspección', order: 5, color: 'SAGE', createdAt: '' },
+    { id: 'stage-6', projectId: 'active-first', name: 'Cierre, Liquidación y Entrega', order: 6, color: 'SAGE', createdAt: '' }
   ];
 
   const assignment: ProjectAssignment = {
@@ -65,12 +68,10 @@ describe('ProjectListComponent', () => {
   beforeEach(async () => {
     projectService = jasmine.createSpyObj<ProjectService>(
       'ProjectService',
-      ['list', 'listStages', 'listAssignments']
+      ['list', 'listStages', 'listAssignments', 'selectStage']
     );
-    stageProgress = jasmine.createSpyObj<ProjectStageProgressService>(
-      'ProjectStageProgressService',
-      ['stageId', 'select', 'clear']
-    );
+    realtime = jasmine.createSpyObj<RealtimeService>('RealtimeService', ['changes']);
+    realtime.changes.and.returnValue(() => {});
     userService = jasmine.createSpyObj<UserService>('UserService', ['list']);
     projectService.list.and.returnValue(of([activeFirst, activeFinal, completed]));
     projectService.listStages.and.callFake(projectId =>
@@ -80,9 +81,13 @@ describe('ProjectListComponent', () => {
       of(projectId === activeFirst.id ? [assignment] : [])
     );
     userService.list.and.returnValue(of([]));
-    stageProgress.stageId.and.callFake(projectId =>
-      projectId === activeFirst.id ? 'stage-2' : projectId === activeFinal.id ? 'stage-6' : null
-    );
+    projectService.selectStage.and.returnValue(of({
+      projectId: activeFirst.id,
+      currentStageId: 'stage-1',
+      version: 1,
+      updatedAt: null,
+      updatedBy: null
+    }));
 
     const auth = {
       session: signal({
@@ -98,7 +103,7 @@ describe('ProjectListComponent', () => {
       imports: [ProjectListComponent],
       providers: [
         { provide: ProjectService, useValue: projectService },
-        { provide: ProjectStageProgressService, useValue: stageProgress },
+        { provide: RealtimeService, useValue: realtime },
         { provide: UserService, useValue: userService },
         { provide: AuthService, useValue: auth }
       ]
@@ -207,7 +212,45 @@ describe('ProjectListComponent', () => {
     options[0].click();
     fixture.detectChanges();
 
-    expect(stageProgress.select).toHaveBeenCalledWith(activeFirst.id, 'stage-1');
+    expect(projectService.selectStage).toHaveBeenCalledWith(activeFirst.id, 'stage-1');
     expect(fixture.componentInstance.notice()).toContain('Diseño');
   });
+
+  const changeEvent = (section: ProjectChangeEvent['section']): ProjectChangeEvent => ({
+    eventId: 'event-1',
+    tenantId: 'tenant',
+    projectId: activeFirst.id,
+    section,
+    entityId: null,
+    actorUserId: null,
+    occurredAt: '2026-11-27T10:00:00'
+  });
+
+  it('ignora SITE_LOG y DOCUMENT pero recarga con otros cambios', fakeAsync(() => {
+    fixture.detectChanges();
+    projectService.list.calls.reset();
+    const handler = realtime.changes.calls.mostRecent().args[0] as
+      (event: ProjectChangeEvent) => void;
+
+    handler(changeEvent('SITE_LOG'));
+    handler(changeEvent('DOCUMENT'));
+    tick(150);
+    expect(projectService.list).not.toHaveBeenCalled();
+
+    handler(changeEvent('STAGE'));
+    tick(150);
+    expect(projectService.list).toHaveBeenCalled();
+  }));
+
+  it('recarga el listado cuando el canal SSE se reconecta', fakeAsync(() => {
+    fixture.detectChanges();
+    projectService.list.calls.reset();
+    const onConnected = realtime.changes.calls.mostRecent().args[2] as () => void;
+
+    onConnected();
+
+    expect(projectService.list).not.toHaveBeenCalled();
+    tick(150);
+    expect(projectService.list).toHaveBeenCalled();
+  }));
 });
